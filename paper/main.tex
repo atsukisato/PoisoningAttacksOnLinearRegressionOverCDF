@@ -1,0 +1,1105 @@
+\documentclass[acmsmall]{acmart}
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+\setcopyright{cc}
+\setcctype{by}
+\acmJournal{PACMMOD}
+\acmYear{2026} \acmVolume{4} \acmNumber{3 (SIGMOD)} \acmArticle{208}
+\acmMonth{6} \acmDOI{10.1145/3802085}
+
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{bm}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{algorithmicx}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{booktabs}
+\usepackage{makecell}
+
+\newtheorem{definition}{Definition}
+\newtheorem{conjecture}{Conjecture}
+\newtheorem{observation}{Observation}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+
+\usepackage[most]{tcolorbox}
+
+\newtcolorbox{definition_box}{
+    colback=white,
+    colframe=black,
+    boxrule=0.5pt,
+    arc=0pt,
+    breakable
+}
+
+\newtcolorbox{theorem_box}{
+    colback=black!5!white,
+    colframe=black!5!white,
+    boxrule=0pt,
+    arc=0pt,
+    breakable
+}
+
+\usepackage{enumitem}
+
+\begin{document}
+
+\title{Mathematical Foundations of Poisoning Attacks on Linear Regression over Cumulative Distribution Functions}
+
+\author{Atsuki Sato}
+\orcid{0009-0001-5366-4842}
+\email{a\_sato@hal.t.u-tokyo.ac.jp}
+\affiliation{%
+    \institution{The University of Tokyo}
+    \city{Tokyo}
+    \country{Japan}
+}
+
+\author{Martin Aum\"uller}
+\orcid{0000-0002-7212-6476}
+\email{maau@itu.dk}
+\affiliation{%
+    \institution{IT University of Copenhagen}
+    \city{Copenhagen}
+    \country{Denmark}
+}
+
+\author{Yusuke Matsui}
+\orcid{0000-0003-1529-0154}
+\email{matsui@hal.t.u-tokyo.ac.jp}
+\affiliation{%
+    \institution{The University of Tokyo}
+    \city{Tokyo}
+    \country{Japan}
+}
+
+\renewcommand{\shortauthors}{Atsuki Sato, Martin Aum\"uller, and Yusuke Matsui}
+
+\begin{abstract}
+Learned indexes are a class of index data structures that enable fast search by approximating the cumulative distribution function (CDF) using machine learning models (Kraska et al., SIGMOD'18). However, recent studies have shown that learned indexes are vulnerable to poisoning attacks, where injecting a small number of poison keys into the training data can significantly degrade model accuracy and reduce index performance (Kornaropoulos et al., SIGMOD'22). In this work, we provide a rigorous theoretical analysis of poisoning attacks targeting linear regression models over CDFs, one of the most basic regression models and a core component in many advanced learned indexes. Our main contributions are as follows: (i) We present a theoretical proof characterizing the optimal single-point poisoning attack and show that the existing method yields the optimal attack. (ii) We show that in multi-point attacks, the existing greedy approach is not always optimal, and we rigorously derive the key properties that an optimal attack should satisfy. (iii) We propose a method to compute an upper bound of the multi-point poisoning attack's impact and empirically demonstrate that the loss under the greedy approach is often close to this bound. Our study deepens the theoretical understanding of attack strategies against linear regression models on CDFs and provides a foundation for the theoretical evaluation of attacks and defenses on learned indexes.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+    <concept>
+        <concept_id>10002951.10002952.10002971</concept_id>
+        <concept_desc>Information systems~Data structures</concept_desc>
+        <concept_significance>500</concept_significance>
+        </concept>
+    <concept>
+        <concept_id>10002978.10002979.10002983</concept_id>
+        <concept_desc>Security and privacy~Cryptanalysis and other attacks</concept_desc>
+        <concept_significance>300</concept_significance>
+        </concept>
+    <concept>
+        <concept_id>10010147.10010257.10010293</concept_id>
+        <concept_desc>Computing methodologies~Machine learning approaches</concept_desc>
+        <concept_significance>100</concept_significance>
+        </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Information systems~Data structures}
+\ccsdesc[300]{Security and privacy~Cryptanalysis and other attacks}
+\ccsdesc[100]{Computing methodologies~Machine learning approaches}
+
+\keywords{Learned Systems, Data Poisoning, Attacks, Indexing}
+
+\received{October 2025}
+\received[revised]{January 2026}
+\received[accepted]{February 2026}
+
+\maketitle
+
+
+
+\section{Introduction}
+\label{sec:introduction}
+
+\input{table/overview}
+
+In recent years, learned indexes have attracted significant attention as a promising alternative to traditional index structures~\cite{kraska2018case_li,sosd-vldb,ferragina2020pgm,vaidya2020partitioned,hsu2019learning,yang2020leaper}.
+One representative example of a learned index is the learned B-tree~\cite{kraska2018case_li,ferragina2020pgm,sun2023learned}, which approximates the cumulative distribution function (CDF) using regression models. It achieves superior memory efficiency and faster query performance compared to conventional methods.
+During query processing, the learned B-tree first uses a regression model to predict the position of the query key, and then corrects the prediction error using local search algorithms such as exponential search.
+Smaller prediction errors lead to narrower search ranges and faster query execution, whereas larger errors increase the cost of local search.
+
+While learned indexes achieve outstanding performance on typical datasets, recent studies have revealed that they are vulnerable to poisoning attacks~\cite{kornaropoulos2022price,dong2025poisoning}.
+Specifically, by inserting just a small number of malicious data keys (poisons) into the legitimate training data used to build the index, an attacker can deliberately degrade the model's prediction accuracy.
+The increase in prediction error leads to higher costs for subsequent local searches, thereby degrading the overall performance of the learned index.
+
+However, existing attack methods proposed in the literature are largely heuristic~\citep{yang2023algorithmic,schuster2025learned}.
+Even in the most basic poisoning setting---where a linear regression model is trained to minimize the mean squared error (MSE) and the attacker aims to maximize it---the optimality of the existing attack method~\cite{kornaropoulos2022price} remains unclear.
+This leaves several fundamental questions open:
+\begin{itemize}[leftmargin=1.5em]
+    \item Which structures characterize an optimal attack?
+    \item Is the existing algorithm from~\cite{kornaropoulos2022price} an optimal attack?
+    \item If not, can we derive a provable and tight upper bound on the maximum impact caused by any attack?
+\end{itemize}
+We resolve these questions and establish a theoretical foundation for attack strategies in the same MSE-based linear-regression poisoning setting studied in prior work~\cite{kornaropoulos2022price}.
+Our contributions are as follows:
+\begin{itemize}[leftmargin=1.5em]
+\item In single-point attack scenarios (i.e., where only one poison point is injected), we provide the first formal proof that placing the poison adjacent to a legitimate key is optimal, as conjectured in~\cite{kornaropoulos2022price}. Thereby, we show that the existing single-point attack method yields an optimal attack.
+\item In multi-point attack scenarios, we show that the iterative greedy method of~\cite{kornaropoulos2022price} does \emph{not} in general exactly match the optimal solution;
+we provide instances where it is strictly suboptimal, thereby refuting the implicit assumption in prior work~\cite{kornaropoulos2022price} that the greedy method is always optimal.
+\item In multi-point attack scenarios, we derive the key properties of an optimal attack; we prove that every poison included in an optimal attack is adjacent to a legitimate key, either directly or indirectly through other poison points. This makes it possible to compute the exact optimal solution in realistic time for small-scale settings.
+\item In multi-point attack scenarios, we propose a computationally efficient method that establishes a rigorous upper bound on the achievable attack impact, i.e., a provable ceiling that no attack can exceed. This upper bound quantifies how close the greedy algorithm is to optimal, and also offers worst-case guarantees for the linear regression model under adversarial settings.
+\item In multi-point attack scenarios, we experimentally show that the greedy solution is often close to our upper bound:
+over $3{,}000$ cases in \cref{sec:experiment:upper_bound_vs_greedy}, the bound is at most $1.25\times$ the greedy MSE and $1.03\times$ on average.
+This suggests that the bound is tight and that greedy attacks are near-optimal.
+\item In the multi-point attack setting, we identified a simple structural property that frequently appears in optimal solutions, which we call \textit{Segment + Endpoint (Seg+E)}, and we provide efficient algorithms to find the Seg+E solution. We experimentally demonstrate that Seg+E consistently yields a larger loss than the greedy approach.
+\end{itemize}
+All six contributions are original to our paper (i.e., they do not appear in prior work, including~\cite{kornaropoulos2022price}), and require nontrivial new technical or experimental insights.
+These results provide the first theoretical framework for understanding attack strategies against linear regression models trained on CDFs, offering a foundation for analyzing attacks and defenses on learned indexes.
+
+\paragraph{Summary of Algorithms.}
+\cref{tab:seg_e} summarizes the algorithms studied in this work.
+Here, $n$ is the number of legitimate keys, $\lambda$ is the poisoning budget, and $T$ is the number of iterations used by our upper-bound search procedures.
+The column  \textit{Empirical Perf. Ratio} reports the achieved MSE or upper bound, divided by the optimal-attack MSE, over $3{,}000$ cases in \cref{sec:experiment:upper_bound_vs_greedy_brute_force} (values closer to $1$ indicate better attack or tighter upper bound).
+In addition to the original setting~\cite{kornaropoulos2022price}, which does not allow duplicate keys (\cref{def:poisoning_linear_regression_on_cdfs}), we also define a relaxed setting that allows duplicate keys (\cref{def:relaxed_poisoning_problem}).
+We design, for both settings, methods to compute the optimum, upper bounds, and Seg+E attacks.
+Empirically, we show that Greedy~\citep{kornaropoulos2022price} is occasionally suboptimal, whereas our heuristic Seg+E is closer to optimal, and Exact Seg+E matches the optimum in all $3{,}000$ instances under both settings.
+Moreover, our upper-bound computation is fast and yields tight bounds (at most $1.092\times$ the optimal-attack MSE).
+
+This paper is organized as follows.
+\cref{sec:related_work} provides an overview of related work, and 
+\cref{sec:problem_statement_and_existing_attacks} formally introduces the problem setting and known attacks.
+\cref{sec:single_point_poisoning_attack} and \cref{sec:multi_point_poisoning_attack} present our theoretical results for single- and multi-point attacks, respectively.
+\cref{sec:experimental_evaluation} reports our experimental validation.
+\cref{sec:discussion} provides further discussion, \cref{sec:limitations_and_future_work} outlines limitations and directions for future research, and \cref{sec:conclusion} concludes the paper.
+
+\section{Related Work}
+\label{sec:related_work}
+
+In this section, we first provide a comprehensive overview of learned indexes, followed by a review of attacks on them.
+
+\subsection{Learned Indexes}
+\label{sec:related_work_learned_index}
+
+Indexing is a fundamental technology for enabling efficient data access and has been applied across a wide range of scenarios, including databases~\cite{ramakrishnan2002database}, search engines~\cite{schutze2008introduction}, file systems~\cite{ghemawat2003google}, and similarity search systems~\cite{aumuller2023recent,aumuller2020ann}.
+Classic examples include B-trees~\cite{bayer1972organization}, hash maps~\cite{knuth1998sorting}, and Bloom filters~\cite{bloom1970spacetime}.
+These data structures have been extensively studied for decades as critical components that determine the overall performance of systems where efficient data access is essential.
+
+Recently, learned indexes, which leverage machine learning to improve index performance, have been proposed and have attracted considerable attention~\cite{kraska2018case_li}.
+Learned indexes replace or augment traditional data structures with machine learning models, aiming to improve memory efficiency and query speed.
+Various learned index architectures have been proposed, extending classical data structures such as Bloom filters~\cite{mitzenmacher2018model,dai2020adaptive,vaidya2020partitioned,sato2023fast}, count-min sketches~\cite{hsu2019learning,zhang2020learned,dolera2023learning,nishishita2025optimized}, and LSM-trees~\cite{yang2020leaper,lu2022tridentkv,dai2020wisckey,mo2023learning} using machine learning techniques.
+
+Among these, learned B-trees, which enhance B-trees using machine learning, are the most actively studied type of learned index and are often referred to simply as ``learned indexes''~\cite{galakatos2019fiting,ding2020alex,ferragina2020pgm,wang2020sindex,sun2023learned,amarasinghe2025learned,wu2022nfl}.
+The core idea of learned indexes is to approximate the cumulative distribution function (CDF) of the data using machine learning-based regression.
+During query processing, the model is used to infer an approximate position of the query key.
+This prediction is then refined using local search techniques such as exponential search to identify the exact position.
+Beyond the original one-dimensional, static setting~\cite{kraska2018case_li,kipf2020radixspline,marcus2020cdfshop,wu2022nfl,amarasinghe2025learned},
+subsequent work has extended learned indexes to multidimensional data~\cite{li2020lisa,nathan2020learning,ding2020tsunami,qi2020effectively,wang2019learned,hidaka2024flexflood,al2024survey}
+and string data~\cite{wang2020sindex,yang2024lits,zhou2024slipp,spector2021bounding,kim2024accelerating},
+as well as to dynamic settings that support updates~\cite{ding2020alex,li2019scalable,lu2021apex,tang2020xindex,li2021finedex,galakatos2019fiting,ferragina2020pgm,wu2021updatable,wang2025new}.
+In addition, there has been increasing interest in theoretical analyses of worst-case/expected complexities in construction/query~\cite{ferragina2020why,zeighami2023distribution,croquevielle2025beyond,zeighami2024theoretical,liu2024learned}.
+
+A common structural characteristic shared by many learned indexes is their hierarchical, Mixture-of-Experts-style design~\cite{sun2023learned}.
+That is, a root model routes queries to localized leaf models, each approximating the CDF of a contiguous subset of sorted keys.
+Linear regression models are often used as leaf models~\cite{ding2020alex,li2021finedex,wang2020sindex,sun2023learned} because they provide sufficient accuracy for small subdatasets, avoiding the computational overhead of complex models.
+
+
+\subsection{Attacks on a Learned Index}
+\label{sec:related_work_attacks_on_learned_index}
+
+While learned indexes often offer excellent performance on typical datasets, recent research has revealed that they also exhibit vulnerabilities to various attacks.
+Attacks on learned Bloom filters include poisoning attacks~\cite{dong2025poisoning}, side-channel attacks~\cite{farwah2024exploiting}, and mutation attacks~\cite{reviriego2021learned}.
+Additional studies demonstrate attacks on learning-based sketches~\cite{jing2022deceiving}, learned cardinality estimators~\cite{zhang2024pace}, and learned index advisors~\cite{zhou2024trap,zheng2024robustness}.
+The root of these vulnerabilities lies in two key factors: (i) the increased information flow introduced by fitting models to past data distributions, and (ii) the degradation of worst-case performance caused by optimizing machine learning models for average-case scenarios~\cite{schuster2025learned}.
+
+Among these, attacks on learned indexes (in the narrow sense) have been particularly actively studied in recent years~\citep{kornaropoulos2022price,yang2023algorithmic,schuster2025learned}.
+Kornaropoulos et al.~\cite{kornaropoulos2022price} proposed poisoning attacks against linear regression models trained on CDFs, and further demonstrated attacks on RMI architectures using such poisoning methods.
+However, the theoretical foundations of these attacks remained unresolved, and addressing this gap is the focus of our study.
+
+Finally, we briefly review other types of attacks on learned B-trees.
+For ALEX~\cite{ding2020alex}, one of the most prominent dynamic learned indexes, algorithmic complexity attacks (ACAs) have been proposed in~\cite{yang2023algorithmic,schuster2025learned}.
+These attacks force the system into exponential time worst-case behavior.
+Additionally, even the learned indexes with guaranteed worst-case complexity (e.g., the PGM-index~\cite{ferragina2020pgm}) are shown to be vulnerable to timing-channel-based attacks~\cite{schuster2025learned}.
+By measuring and analyzing query latency, an attacker may infer information about the underlying data distribution that should be inaccessible. Such attacks are not the focus of this work.
+
+\section{Problem Statement and Existing Attacks}
+\label{sec:problem_statement_and_existing_attacks}
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fig/xs.pdf}
+        \caption{Regression Before Poisoning.}
+        \label{fig:single_point_poisoning_attack_a}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fig/tekito_poisoning_p1.pdf}
+        \caption{Regression After Poisoning.}
+        \label{fig:single_point_poisoning_attack_b}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{fig/loss_curve.pdf}
+        \caption{Loss Function.}
+        \label{fig:single_point_poisoning_attack_c}
+    \end{subfigure}
+    \caption{Single-point poisoning attack on $\mathcal{K} = \{2, 11, 13, 19, 32, 36, 39\}$.
+    By inserting a poison point, the rank of every key greater than the poison increases by one.
+    The linear regression model is fitted on the poisoned key set, leading to a change in MSE.}
+    \label{fig:single_point_poisoning_attack}
+    \Description{Three plots illustrating a single-point poisoning attack: regression before poisoning, regression after inserting a poison key, and the loss curve over candidate poison points.}
+\end{figure}
+
+In this section, we first define the problem setting of poisoning attacks against linear regression models trained on CDFs (\cref{sec:problem_statement}), followed by an overview of existing attack methods (\cref{sec:existing_attacks}).
+
+\subsection{Problem Statement}
+\label{sec:problem_statement}
+
+Throughout this paper, we let $\mathcal{K}$ denote the set of \emph{legitimate keys}, i.e., the keys originally present in the training data before any attack, and $n \coloneq |\mathcal{K}|$.
+We use $\mathcal{X}$ to denote a general key set, which may include both legitimate and poison keys, and $m \coloneq |\mathcal{X}|$.
+
+We begin by defining linear regression on CDFs similarly to~\cite{kornaropoulos2022price}.
+\begin{definition_box}
+\begin{definition}[\textbf{Linear Regression on CDFs~\cite[Def. 1]{kornaropoulos2022price}}]
+\label{def:linear_regression_on_cdfs}
+Let $\mathcal{X} = \{x_1, x_2, \dots, x_m\}$ be a multiset of natural numbers representing the keys stored in the index, where $x_1 \leq x_2 \leq \dots \leq x_m$ and at least two distinct values appear in $\mathcal{X}$ (i.e., $x_1 \neq x_m$).
+Define the rank associated with $x_i$ as $r_i \coloneq i$.
+The MSE of fitting a linear regression model with parameters $w, b \in \mathbb{R}$ is defined as
+\begin{equation}
+    \mathcal{L}(\mathcal{X};w,b) \coloneq \frac{1}{m} \sum_{i=1}^m \left(w x_i + b - r_i\right)^2.
+\end{equation}
+The problem of linear regression on CDFs is to find the model parameters that minimize the MSE, that is, to determine
+\begin{equation}
+    E(\mathcal{X}) \coloneq \min_{w,b} \mathcal{L}(\mathcal{X};w,b).
+\end{equation}
+\end{definition}
+\end{definition_box}
+For convenience, define $\mathrm{Cov}_\mathrm{XR}, \mathrm{Var}_\mathrm{X}, \mathrm{Var}_\mathrm{R}, \bar{x}$, and $\bar{r}$ as follows:
+\begin{align}
+\label{eq:cov_and_var_and_m}
+    \mathrm{Cov}_\mathrm{XR} &= \frac{1}{m} \sum_{i=1}^m (x_i - \bar{x})(r_i - \bar{r}), \quad
+    \mathrm{Var}_\mathrm{X} = \frac{1}{m} \sum_{i=1}^m (x_i - \bar{x})^2, \nonumber \\
+    \mathrm{Var}_\mathrm{R} &= \frac{1}{m} \sum_{i=1}^m (r_i - \bar{r})^2, \quad
+    \bar{x} = \frac{1}{m} \sum_{i=1}^m x_i, \quad
+    \bar{r} = \frac{1}{m} \sum_{i=1}^m r_i.
+\end{align}
+Then, this problem has the following closed-form solution~\cite{kornaropoulos2022price}:
+\begin{equation}
+\label{eq:closed_form_solution}
+    w^\ast = \frac{\mathrm{Cov}_\mathrm{XR}}{\mathrm{Var}_\mathrm{X}}, 
+    \quad b^\ast = \bar{r} - w^\ast \bar{x}, 
+    \quad E(\mathcal{X}) = \mathrm{Var}_\mathrm{R} - \frac{{\mathrm{Cov}_\mathrm{XR}}^2}{\mathrm{Var}_\mathrm{X}}.
+\end{equation}
+Following prior work~\cite{kornaropoulos2022price}, we focus on integer keys for simplicity; extensions to other key types are discussed in \cref{sec:discussion}.
+
+We address the following poisoning attack problem, which is the same as the one studied in~\cite{kornaropoulos2022price}:
+\begin{definition_box}
+\begin{definition}[\textbf{Poisoning Linear Regression on CDFs~\cite[Def. 2]{kornaropoulos2022price}}]
+\label{def:poisoning_linear_regression_on_cdfs}
+Let $\mathcal{K} = \{k_1, k_2, \dots, k_n\} \subset \mathbb{N}$ be $n$ distinct legitimate keys (i.e., the keys in the original training data before any attack), sorted so that $k_1 < k_2 < \dots < k_n$.
+Let $\lambda \in \mathbb{N}$ be the maximum number of poison points.
+The problem of poisoning linear regression on CDFs is to find a set $\mathcal{P}^\ast \subset \mathbb{N}$ satisfying $|\mathcal{P}^\ast| \leq \lambda$ and $\mathcal{P}^\ast \subset \{k_1 + 1, k_1 + 2, \dots, k_n - 1\} \setminus \mathcal{K}$ that maximizes $E(\mathcal{K} \cup \mathcal{P}^\ast)$.
+Formally, 
+\begin{equation}
+\label{eq:poisoning_linear_regression_on_cdfs}
+    \mathcal{P}^\ast \coloneq \argmax_{\mathcal{P} ~ \mathrm{s.t.} ~ |\mathcal{P}| \leq \lambda, ~ \mathcal{P} \subset \{k_1 + 1, k_1 + 2, \dots, k_n - 1\} \setminus \mathcal{K}} E(\mathcal{K} \cup \mathcal{P}).
+\end{equation}
+\end{definition}
+\end{definition_box}
+\paragraph{Threat Model.}
+We adopt the same threat model as in~\cite{kornaropoulos2022price}.
+The attacker has full knowledge of the legitimate key set $\mathcal{K}$ and can inject arbitrarily chosen poison keys into the training data, subject only to the constraint in~\cref{eq:poisoning_linear_regression_on_cdfs}.
+Among common threat models, this setting gives the attacker the strongest information and capabilities, and thus represents the most impactful attack scenario.
+
+As in~\cite{kornaropoulos2022price}, we restrict poisons to lie strictly between the minimum and maximum legitimate keys to avoid trivial outlier detection and removal.
+If there are no unused integer values between $k_1$ and $k_n$ (i.e., $\mathcal{K}=\{k_1,k_1+1,\dots,k_n\}$), then no poisons can be injected.
+When $\lambda = 1$, the problem is referred to as a \textit{single-point poisoning attack}; when $\lambda \geq 2$, it is called a \textit{multi-point poisoning attack}.
+
+\cref{fig:single_point_poisoning_attack} illustrates an example of a single-point attack.
+\cref{fig:single_point_poisoning_attack_a} shows the legitimate keys and the linear regression model fitted to their CDF.
+\cref{fig:single_point_poisoning_attack_b} shows how the regression line is distorted when a poison point $\mathcal{P} = \{8\}$ is inserted.
+A key characteristic of poisoning attacks against linear regression on CDFs is that the insertion of poison points alters the ranks of all keys following the poisons.
+For example, in \cref{fig:single_point_poisoning_attack_a,fig:single_point_poisoning_attack_b}, inserting the poison point 8 does not affect the ranks of keys smaller than 8, but increases the rank of each key larger than 8 by one. 
+This rank-shifting effect is one of the main factors that makes the mathematical analysis of such attacks challenging.
+
+\subsection{Existing Attacks}
+\label{sec:existing_attacks}
+
+\begin{algorithm}[t]
+    \caption{Single-point Poisoning Attack~\cite{kornaropoulos2022price}}
+    \label{algo:single-point poisoning attack}
+    \begin{algorithmic}[1]
+    \Require Legitimate Keys: $\mathcal{K}$
+    \Function{Single-pointPoisoningAttack}{$\mathcal{K}$}
+        \State $k_\mathrm{min} \gets \min(\mathcal{K}), \quad k_\mathrm{max} \gets \max(\mathcal{K})$
+        \State $\mathcal{P}_\mathrm{Cands} \gets \{k + 1 \mid k \in \mathcal{K} \setminus \{k_\mathrm{max}\}\} \cup \{k - 1 \mid k \in \mathcal{K} \setminus \{k_\mathrm{min}\}\}$
+        \State $\mathcal{P}_\mathrm{Cands} \gets \mathcal{P}_\mathrm{Cands} \setminus \mathcal{K}$
+        \If {$\mathcal{P}_\mathrm{Cands} = \varnothing$} \textbf{return} \texttt{None} \EndIf
+        \State $p \gets \textsc{SelectMaxLossCandidate}(\mathcal{K}, \mathcal{P}_\mathrm{Cands})$
+        \If {$E(\mathcal{K} \cup \{p\}) < E(\mathcal{K})$} \textbf{return} \texttt{None} \EndIf
+        \State \textbf{return} $p$
+    \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\paragraph{Single-point poisoning attack.}
+We first recap the single-point poisoning attack strategy proposed by~\cite{kornaropoulos2022price}.
+Importantly, the following statement is an \emph{empirical observation} reported in prior work and is \emph{not} one of our contributions:
+\begin{theorem_box}
+\begin{observation}[\textbf{Empirical Observation in~\cite{kornaropoulos2022price}}]
+\label{observ:single_point_poisoning_attack}
+The optimal single-point attack $\mathcal{P}^\ast$ is either the empty set or a singleton containing an integer adjacent to a legitimate key;
+\begin{equation}
+\mathcal{P}^\ast \subset \{k + 1 \mid k \in \mathcal{K}\} \cup \{k - 1 \mid k \in \mathcal{K}\}.
+\end{equation}
+\end{observation}
+\end{theorem_box}
+\cref{fig:single_point_poisoning_attack} presents an example illustrating this observation.
+\cref{fig:single_point_poisoning_attack_c} shows a plot of $E(\mathcal{K} \cup \{p\})$ for all possible poison points $p$.
+Note that integers already occupied by legitimate keys are excluded from the plot, as they cannot serve as poison keys.
+In this example, $E(\mathcal{K} \cup \{p\})$ forms a convex shape within each interval between two consecutive legitimate keys.
+Therefore, the poison point $p$ that maximizes the loss in each interval lies at either endpoint of the interval.
+Specifically, the optimal single-point attack in this case is $\mathcal{P} = \{12\}$, which aligns with \cref{observ:single_point_poisoning_attack}.
+
+Based on this observation, \cite{kornaropoulos2022price} proposed the following single-point attack algorithm: exhaustively evaluating $E(\mathcal{K} \cup \{p\})$ for every candidate poison point $p$ (i.e., integers adjacent to legitimate keys).
+The algorithm is summarized in \cref{algo:single-point poisoning attack}.
+By employing differential calculation, this evaluation can be performed in time $\mathcal{O}(n)$.
+However,~\cite{kornaropoulos2022price} did not prove the optimality of this algorithm.
+
+\begin{algorithm}[t]
+    \caption{Greedy Multi-point Poisoning Attack~\cite{kornaropoulos2022price}}
+    \label{algo:multi-point poisoning attack}
+    \begin{algorithmic}[1]
+    \Require Legitimate Keys: $\mathcal{K}$, Maximum Number of Poisons: $\lambda$
+    \Function{Multi-pointPoisoningAttack}{$\mathcal{K}, \lambda$}
+        \State $\mathcal{P} \gets \varnothing$
+        \While {$|\mathcal{P}| < \lambda$}
+            \State $p \gets \textsc{Single-pointPoisoningAttack}(\mathcal{K} \cup \mathcal{P})$
+            \If {$p = \texttt{None}$} \textbf{break} \EndIf
+            \State $\mathcal{P} \gets \mathcal{P} \cup \{p\}$
+        \EndWhile
+        \State \textbf{return} $\mathcal{P}$
+    \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\paragraph{Multi-point poisoning attack.}
+For multi-point attacks, \cite{kornaropoulos2022price} iteratively applies the above single-point attack $\lambda$ times, see \cref{algo:multi-point poisoning attack}.
+The time complexity of this multi-point poisoning algorithm is $\mathcal{O}((n + \lambda)\lambda)$.
+Empirically, they report that this greedy approach results in an optimal attack, again missing a formal proof.
+
+\section{Optimality of Single-Point Poisoning Attack}
+\label{sec:single_point_poisoning_attack}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.66\textwidth]{fig/single_point_theorem_vis.pdf}
+  \caption{Proof of \cref{thm:single_point_poisoning_attack}. \cref{lem:single_point_poisoning_attack} implies that either $E( \mathcal{K} \cup \{p^\ast - 1\})$ or $E( \mathcal{K} \cup \{p^\ast + 1\})$ is greater than $E( \mathcal{K} \cup \{p^\ast\})$.}
+  \label{fig:single_point_poisoning_attack_proof}
+  \Description{Illustration of the proof of the single-point optimality theorem, showing that moving an interior poison point left or right increases the loss.}
+\end{figure}
+
+We theoretically guarantee the optimality of the single-point attack proposed in~\cite{kornaropoulos2022price} by proving the following theorem.
+\begin{theorem_box}
+    \begin{theorem}
+    \label{thm:single_point_poisoning_attack}
+    \cref{observ:single_point_poisoning_attack} always holds.
+    In other words, the optimal single-point attack $\mathcal{P}^\ast$ satisfies:
+    \begin{equation}
+        \mathcal{P}^\ast \subset \{k + 1 \mid k \in \mathcal{K}\} \cup \{k - 1 \mid k \in \mathcal{K}\}.
+    \end{equation}
+    \end{theorem}
+\end{theorem_box}
+To prove \cref{thm:single_point_poisoning_attack}, we first establish the following key lemma.
+\begin{theorem_box}
+\begin{lemma}
+\label{lem:single_point_poisoning_attack}
+Let $\mathcal{X}$ be the set of keys stored in the index, with $m = |\mathcal{X}| \geq 3$, and let $x_1 \leq x_2 \leq \cdots \leq x_m$ denote the elements of $\mathcal{X}$ in increasing order.
+Then, for each $i \in \{2, 3, \dots, m-1\}$, $\mathrm{sign}\left(\frac{d E(\mathcal{X})}{dx_i}\right)$ is non-decreasing over the interval $x_i \in (x_{i-1}, x_{i+1})$, and there exists at most one value of $x_i$ in this interval for which $\frac{d E(\mathcal{X})}{dx_i} = 0$.
+Here, the function $\mathrm{sign}(x)$ is defined as $-1$ if $x < 0$, $0$ if $x = 0$, and $1$ if $x > 0$.
+\end{lemma}
+\end{theorem_box}
+\begin{proof}[Proof sketch of \cref{lem:single_point_poisoning_attack}]
+Computing $\mathrm{sign}\left(d E(\mathcal{X}) / dx_i \right)$ shows that it equals the sign of the covariance between $\bm{x}'$ and $\bm{r}'$, where $\bm{x}'$ and $\bm{r}'$ denote the vectors obtained from $\bm{x}$ and $\bm{r}$, respectively, by removing their $i$-th elements (i.e., $x_i$ and $i$).
+Since both $\bm{x}'$ and $\bm{r}'$ are monotonically increasing, the sign of covariance is positive.
+\end{proof}
+We defer the full, formal proof to Appendix A of the full version of this paper~\cite{sato2026mathematical_arxiv}.
+Using \cref{lem:single_point_poisoning_attack}, we can prove \cref{thm:single_point_poisoning_attack} as follows.
+\begin{proof}[Proof of \cref{thm:single_point_poisoning_attack}]
+To facilitate comprehension of the proof structure, an illustrative figure is presented in \cref{fig:single_point_poisoning_attack_proof}.
+Assume, for the sake of contradiction, that there exists an optimal single-point attack $\mathcal{P}^\ast = \{p^\ast\}$ such that $p^\ast \notin \{k + 1 \mid k \in \mathcal{K}\} \cup \{k - 1 \mid k \in \mathcal{K}\}$.
+
+Let $i \in \{2, 3, \dots, n\}$ be the unique index satisfying $k_{i-1} < p^\ast < k_i$.
+Under our assumption, the integers adjacent to $p^\ast$ are not legitimate keys, meaning $k_{i-1} < p^\ast - 1$ and $p^\ast + 1 < k_i$ (see \cref{fig:single_point_poisoning_attack_proof}).
+Since $p^\ast$ is assumed to be an optimal single poison point, we have:
+\begin{equation}
+\label{eq:single_point_from_assumption}
+    E( \mathcal{K} \cup \{p^\ast {-} 1\}) \leq E( \mathcal{K} \cup \{p^\ast\}) ~~ \land ~~ E( \mathcal{K} \cup \{p^\ast\}) \geq E( \mathcal{K} \cup \{p^\ast {+} 1\}).
+\end{equation}
+
+According to \cref{lem:single_point_poisoning_attack}, the function $\mathrm{sign}\left(\frac{d E(\mathcal{K} \cup \{p\})}{dp}\right)$ is non-decreasing over the interval $p \in (k_{i-1}, k_i)$, and there exists at most one point $p$ in this interval where $\frac{d E(\mathcal{K} \cup \{p\})}{dp} = 0$.
+Therefore, the behavior of $E(\mathcal{K} \cup \{p\})$ over $p \in (k_{i-1}, k_i)$ must fall into one of the following three cases:
+(i) strictly increasing,
+(ii) strictly decreasing, or
+(iii) strictly decreasing over $(k_{i-1}, p')$ and strictly increasing over $(p', k_i)$ for some $p' \in (k_{i-1}, k_i)$. In all cases, either  $E( \mathcal{K} \cup \{p^\ast - 1\}) > E( \mathcal{K} \cup \{p^\ast\})$ or $ E( \mathcal{K} \cup \{p^\ast\}) < E( \mathcal{K} \cup \{p^\ast + 1\})$. This contradicts the assumption that $p^\ast$ is optimal.
+\end{proof}
+
+By \cref{thm:single_point_poisoning_attack}, we have established that the single-point attack proposed in~\cite{kornaropoulos2022price} is guaranteed to find the optimal solution.
+In other words, by exhaustively searching only the integers adjacent to legitimate keys, one can identify the optimal single-point attack.
+
+\section{Multi-Point Poisoning Attack}
+\label{sec:multi_point_poisoning_attack}
+
+In this section, we first demonstrate that the iterative greedy algorithm (\cref{algo:multi-point poisoning attack}) proposed in~\cite{kornaropoulos2022price} is not optimal, and we then describe the key properties that can be rigorously asserted about the structure of the optimal solution (\cref{sec:structure_of_optimal_multi_point_attack}).
+Next, leveraging these properties, we propose a method to upper-bound the loss incurred by multi-point attacks (\cref{sec:upper_bound_multi_point_poisoning_attack}).
+Finally, motivated by the structural insights described above, we introduce the Segment + Endpoint (Seg+E) class of poison sets and provide efficient exact and heuristic algorithms to find Seg+E solutions (\cref{sec:segment_plus_endpoint_attack}).
+
+\subsection{Structure of Optimal Multi-Point Attacks}
+\label{sec:structure_of_optimal_multi_point_attack}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{fig/greedy_poisoning_p1.pdf}
+      \caption{Optimal 1-point Poisoning.}
+      \label{fig:greedy_poisoning_p1}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{fig/greedy_poisoning_p2.pdf}
+      \caption{Greedy 2-point Poisoning.}
+      \label{fig:greedy_poisoning_p2}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.32\textwidth}
+      \centering
+      \includegraphics[width=\textwidth]{fig/optimal_poisoning_p2.pdf}
+      \caption{Optimal 2-point Poisoning.}
+      \label{fig:optimal_poisoning_p2}
+  \end{subfigure}
+  \caption{Multi-point poisoning attack.
+  The greedy two-point attack~\cite{kornaropoulos2022price} injects the poison point $12$ first (\cref{fig:greedy_poisoning_p1}), followed by the injection of the poison point $10$ (\cref{fig:greedy_poisoning_p2}). 
+  In contrast, the optimal attack is $\{37,38\}$, resulting in a higher MSE (\cref{fig:optimal_poisoning_p2}).}
+  \label{fig:multi_point_poisoning_attack}
+  \Description{Three plots comparing optimal one-point poisoning, greedy two-point poisoning, and optimal two-point poisoning.}
+\end{figure}
+
+\begin{theorem_box}
+\begin{observation}
+\label{observ:greedy_not_optimal_multipoint}
+The iterative greedy approach (\cref{algo:multi-point poisoning attack}) does not guarantee an optimal multi-point poisoning attack. 
+\end{observation}
+\end{theorem_box}
+
+\cref{fig:multi_point_poisoning_attack} provides an illustrative example where the greedy approach does not lead to the optimal solution.
+As shown in the previous section, for the single-point attack case, the optimal solution can be found by exhaustively evaluating all integers adjacent to the legitimate keys (\cref{fig:greedy_poisoning_p1}).
+The greedy poisoning method of~\cite{kornaropoulos2022price} performs a two-point attack by adding one additional optimal poison key on top of this (\cref{fig:greedy_poisoning_p2}).
+However, the true optimal two-point attack involves adding poison keys as shown in \cref{fig:optimal_poisoning_p2}.
+Thus, the greedy poisoning method does not always yield the optimal solution.
+This finding is valuable for preventing confusion among future researchers, as~\cite{kornaropoulos2022price} reports the following:
+``\textit{Even though we do not provide a proof of optimality for the multiple-point poisoning, we experimentally observed that our approach matched the performance of the brute-force attack in every tested dataset.}''
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.66\textwidth]{fig/multi_point_theorem_vis.pdf}
+    \caption{Proof of \cref{thm:structure_of_optimal_multi_point_attack}.
+    Lemma~2 implies that $E(\mathcal{K} \cup \mathcal{P}_{-})$ or $E(\mathcal{K} \cup \mathcal{P}_{+})$ is greater than $E(\mathcal{K} \cup \mathcal{P}^\ast)$.}
+    \label{fig:multi_point_theorem_vis}
+    \Description{Illustration of the proof of the multi-point structural theorem, showing that shifting an isolated poison block left or right increases the loss.}
+\end{figure}
+
+Next, we establish the following theorem, which characterizes the structure of the optimal solution for multi-point attacks.
+This result can be seen as an extension of \cref{thm:single_point_poisoning_attack}.
+\begin{theorem_box}
+\begin{theorem}
+\label{thm:structure_of_optimal_multi_point_attack}
+    The optimal multi-point attack consists only of poison keys that are either adjacent to legitimate keys directly or connected transitively to legitimate keys via chains of neighboring poison keys.
+    Formally, the optimal multi-point attack $\mathcal{P}^\ast$ satisfies:
+    \begin{equation}
+        \forall p \in \mathcal{P}^\ast,~ \exists k \in \mathcal{K}, ~ \{\min(p,k)+1, \dots, \max(p,k)-1\} \subset \mathcal{P}^\ast.
+    \end{equation}
+\end{theorem}
+\end{theorem_box}
+\begin{proof}[Proof sketch of \cref{thm:structure_of_optimal_multi_point_attack}]
+To facilitate comprehension of the proof structure, an illustrative figure is presented in \cref{fig:multi_point_theorem_vis}.
+First, we prove an extension of \cref{lem:single_point_poisoning_attack}, denoted Lemma~2 (in Appendix~B of the full version~\cite{sato2026mathematical_arxiv}), which implies that if there exists an isolated block of consecutive poison keys (an \emph{Isolated Poison Block}), then moving that block either left or right can strictly increase the loss.
+Applying the same argument as in \cref{thm:single_point_poisoning_attack}, but with an Isolated Poison Block instead of a single poison key, yields \cref{thm:structure_of_optimal_multi_point_attack}.
+\end{proof}
+We defer the full, formal proof to Appendix~B of the full version~\cite{sato2026mathematical_arxiv}.
+An immediate consequence of this theorem is that we can find an optimal solution by examining at most $\binom{2n-2+\lambda}{\lambda}$ candidate multi-point attacks.
+This follows because the number of candidate optimal multi-point attacks is bounded by the number of ways to distribute the $\lambda$ units of poison among $2n-1$ groups (corresponding to poison placed to the right of $k_1$, to the left of $k_2$, to the right of $k_2$, $\dots$, to the left of $k_n$, and the unused portion of the budget).
+Since the MSE for each poisoning configuration can be computed in $\mathcal{O}(n+\lambda)$ time, the overall running time to find the optimum is $\mathcal{O}\left((n+\lambda)\binom{2n-2+\lambda}{\lambda}\right)$, as summarized in the Optimal entry of \cref{tab:seg_e}.
+Without our structural result, one would have to examine all combinations of integers in the domain that are not occupied by legitimate keys.
+The number of such combinations is $\mathcal{O}\left(\binom{k_n-k_1}{\lambda}\right)$, which is computationally infeasible in practice because $k_n-k_1$ is typically at least $10^3$ and can easily exceed $10^9$. 
+Our theorem drastically shrinks the search space, making it realistic to compute the optimal multi-point attack for moderately small values of $n$ and $\lambda$.
+
+Next, we highlight two potential misconceptions around the structure of optimal multi-point attacks.
+The first potential misconception is that \cref{thm:single_point_poisoning_attack} trivially implies \cref{thm:structure_of_optimal_multi_point_attack}.
+For the sake of an example, let the legitimate key set be $\mathcal{K} = \{1, 5\}$.
+While \cref{thm:structure_of_optimal_multi_point_attack} allows us to rigorously conclude that $\mathcal{P} = \{3,4\}$ is not an optimal solution, the statement of \cref{thm:single_point_poisoning_attack} alone does not allow us to rule out the possibility that $\mathcal{P} = \{3,4\}$ could be the optimal two-point attack.
+Although $\mathcal{P} = \{3\}$ or $\mathcal{P} = \{4\}$ are not optimal in the single-point case, \cref{thm:single_point_poisoning_attack} does not provide any guarantee about whether $\mathcal{P} = \{3,4\}$ could become optimal in the multi-point case.
+Only with \cref{thm:structure_of_optimal_multi_point_attack} can we rigorously conclude that $\mathcal{P} = \{3,4\}$ is not the optimal solution.
+
+The second potential misconception is that \cref{thm:structure_of_optimal_multi_point_attack} serves as a proof of the optimality of the greedy approach.
+This is also a misconception, which we demonstrated in \cref{fig:multi_point_poisoning_attack}, where the greedy poisoning method is not optimal.
+\cref{thm:structure_of_optimal_multi_point_attack} merely shows that the solution obtained by the greedy poisoning method \textbf{can be} an optimal solution in the sense that all poison keys are directly or indirectly adjacent to some legitimate key.
+It does not claim that the greedy poisoning method \textbf{is guaranteed to be} optimal.
+
+\subsection{Upper Bound on Impact of Optimal Multi-Point Poisoning Attacks}
+\label{sec:upper_bound_multi_point_poisoning_attack}
+
+Here, we propose methods to upper-bound the impact of multi-point attacks.
+The resulting upper bound can be computed efficiently: either in $\mathcal{O}(T(n+\lambda))$ time using an iterative method, where $T$ is the number of iterations, or in $\mathcal{O}((n+\lambda)\log(n+\lambda))$ time using an exact method.
+This upper bound is important for both attackers and defenders: it quantifies the maximum possible improvement over existing attacks and provides a worst-case performance guarantee for linear regression (see \cref{sec:discussion} for further discussion).
+We begin by relaxing the poisoning problem, and then describe an efficient method for solving it.
+
+\paragraph{Deriving the Upper-Bounding Problem.}
+To upper-bound the loss of multi-point attacks, we relax \cref{def:poisoning_linear_regression_on_cdfs} by allowing duplicate poisons and permitting poisons to lie in $\mathcal{K}$.
+Formally, we arrive at the following problem:
+\begin{definition_box}
+\begin{definition}[\textbf{Relaxed Poisoning Problem}]
+\label{def:relaxed_poisoning_problem}
+Let $\mathcal{K} = \{k_1, k_2, \dots, k_n\} \subset \mathbb{N}$ be $n$ distinct legitimate keys arranged in increasing order, i.e., $k_1 < k_2 < \dots < k_n$.
+Let $\lambda \in \mathbb{N}$ be the maximum number of poison points.
+The Relaxed Poisoning Problem is to determine the multiset $\mathcal{P}^\ast$ of integers satisfying $|\mathcal{P}^\ast| \leq \lambda$ and $\mathcal{P}^\ast\subset\{k_1,k_1+1,\dots,k_n\}$ that maximizes $E(\mathcal{K} \uplus \mathcal{P}^\ast)$, where $\uplus$ denotes multiset addition.
+Formally,
+\begin{equation}
+    \mathcal{P}^\ast \coloneq \argmax_{\mathcal{P} \text{ s.t. } |\mathcal{P}| \leq \lambda, \mathcal{P}\subset\{k_1,k_1+1,\dots,k_n\}} E(\mathcal{K} \uplus \mathcal{P}),
+\end{equation}
+\end{definition}
+\end{definition_box}
+The solution to \cref{def:relaxed_poisoning_problem} provides an upper bound on the loss of the original poisoning problem (\cref{def:poisoning_linear_regression_on_cdfs}), because \cref{def:relaxed_poisoning_problem} relaxes the constraints on the poison set $\mathcal{P}$.
+Note that unlike \cref{def:poisoning_linear_regression_on_cdfs}, this relaxed formulation remains feasible even when $\mathcal{K}=\{k_1,k_1+1,\dots,k_n\}$, because it allows $\mathcal{P}$ to be a multiset and to include values from $\mathcal{K}$.
+
+By applying an argument similar to that in \cref{thm:structure_of_optimal_multi_point_attack}, we can establish the following theorem regarding the structure of the optimal solution $\mathcal{P}^\ast$ to the Relaxed Poisoning Problem.
+\begin{theorem_box}
+\begin{theorem}
+\label{thm:relaxed_poisoning_problem}
+The optimal solution $\mathcal{P}^\ast$ to the Relaxed Poisoning Problem is a multiset over $\mathcal{K}$, i.e., $\mathrm{Supp}(\mathcal{P}^\ast) \subset \mathcal{K}$, where $\mathrm{Supp}$ denotes the support of the multiset.
+\end{theorem}
+\end{theorem_box}
+\begin{proof}[Proof of \cref{thm:relaxed_poisoning_problem}]
+The proof is analogous to that of \cref{thm:structure_of_optimal_multi_point_attack}:
+if there exists poison points outside of $\mathcal{K}$, we can increase the loss by shifting them to the keys within $\mathcal{K}$.
+\end{proof}
+Thus, letting $\mathcal{Q}_{\mathcal{K}}(\bm{d})$ be the multiset containing $d_i$ copies of $k_i$ for each $i$ (with $\bm{d} \in \mathbb{Z}_{\geq 0}^n$), the relaxed problem reduces to finding
+\begin{equation}
+    \bm{d}^\ast \coloneq \argmax_{\bm{d} \text{ s.t. } \sum_{i=1}^{n} d_i \leq \lambda} E(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d})).
+\end{equation}
+
+The following theorem states that in the Relaxed Poisoning Problem, it is always optimal to fully exhaust the given budget $\lambda$:
+\begin{theorem_box}
+\begin{theorem}
+\label{thm:d_saturation}
+The optimal solution $\bm{d}^\ast$ to the Relaxed Poisoning Problem satisfies $\sum_{i=1}^{n} d_i^\ast = \lambda$.
+\end{theorem}
+\end{theorem_box}
+\begin{proof}[Proof Sketch of \cref{thm:d_saturation}]
+    We first prove Lemma~3 (in Appendix~C of the full version~\cite{sato2026mathematical_arxiv}), which states that in the relaxed setting, there exists some $i\in\{1,2,\dots,n\}$ such that adding a poison at $x_i$ increases the loss.
+    This implies that using the full poisoning budget is optimal.
+\end{proof}
+The full proof is provided in Appendix~C of the full version~\cite{sato2026mathematical_arxiv}.
+Next, we derive the following inequality to further upper-bound the solution of the Relaxed Poisoning Problem:
+\begin{align}
+&~ \max_{\bm{d} \text{ s.t. } \sum_{i=1}^{n} d_i = \lambda} E(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d})) \\
+=&~ \max_{\bm{d} \text{ s.t. } \sum_{i=1}^{n} d_i = \lambda} \min_{w,b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b) \\
+\label{eq:upper_bound_relaxed_poisoning_problem}
+\leq&~ \min_{w} \max_{\bm{d} \text{ s.t. } \sum_{i=1}^{n} d_i = \lambda} \min_{b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b).
+\end{align}
+The equality follows from the definition of $E(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}))$ in \cref{def:linear_regression_on_cdfs}.
+The inequality follows from the standard max-min inequality: $\max_{x} \min_{y} f(x, y) \leq \min_{y} \max_{x} f(x, y)$, for any function $f: \mathcal{X} \times \mathcal{Y} \to \mathbb{R}$. 
+By computing the value of \cref{eq:upper_bound_relaxed_poisoning_problem}, we obtain an upper bound on the loss achievable by multi-point attacks.
+
+\paragraph{Computing the Upper Bound.}
+To determine the value of \cref{eq:upper_bound_relaxed_poisoning_problem}, we make use of the following two theorems.
+\begin{theorem_box}
+\begin{theorem}
+\label{thm:convexity_of_min_b_l_fixed_d}
+For fixed $\bm{d}$,  $\min_{b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b)$ is a convex quadratic function of $w$.
+\end{theorem}
+\end{theorem_box}
+\begin{proof}[Proof Sketch of \cref{thm:convexity_of_min_b_l_fixed_d}]
+    For fixed $w$, the optimal $b^\ast$ can be solved in closed form, and substituting it shows the loss is a quadratic function in $w$ with positive quadratic coefficient.
+\end{proof}
+\begin{theorem_box}
+\begin{theorem}
+\label{thm:optimal_c_for_fixed_w}
+    For fixed $w > 0$, the choice of $\bm{d}$ (subject to $\sum_{i=1}^{n} d_i = \lambda$) that maximizes $\min_{b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b)$ is characterized as follows:
+    \begin{itemize}[leftmargin=1.5em]
+        \item If $w (k_n - k_1) < n + \lambda$, all poison points are concentrated on a single key; that is, $\exists i \in \{1, 2, \dots, n\}$ such that $d_i = \lambda$.
+        \item Otherwise, all poison points are concentrated at the endpoints $k_1$ and $k_n$; that is, $d_1 + d_n = \lambda$.
+    \end{itemize}
+\end{theorem}
+\end{theorem_box}
+\begin{proof}[Proof Sketch of \cref{thm:optimal_c_for_fixed_w}]
+    When $w(k_n - k_1) < n+\lambda$, for any $1\leq i < j \leq n$ with $d_i,d_j \geq 1$, moving a poison from $i$ to $j$, or from $j$ to $i$, always increases the loss.
+    When $w(k_n - k_1) \geq n+\lambda$, for any $2\leq i \leq n-1$ with $d_i \geq 1$, moving a poison from $i$ to $1$, or from $i$ to $n$, always increases the loss.
+\end{proof}
+The full proofs are provided in Appendix~C of the full version~\cite{sato2026mathematical_arxiv}.
+By \cref{thm:optimal_c_for_fixed_w}, the number of possible $\bm{d}$ configurations that maximize $\min_{b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b)$ is at most $\mathcal{O}(n + \lambda)$.
+For each such $\bm{d}$, \cref{thm:convexity_of_min_b_l_fixed_d} implies that $\min_{b} \mathcal{L}(\mathcal{K} \uplus \mathcal{Q}_\mathcal{K}(\bm{d}); w, b)$ is a convex quadratic function of~$w$.
+By properly implementing differential computation, we can compute the coefficients of these quadratic functions in time $\mathcal{O}(n + \lambda)$, as detailed in Appendix~D of the full version~\cite{sato2026mathematical_arxiv}.
+Thus, evaluating \cref{eq:upper_bound_relaxed_poisoning_problem} reduces to the following problem: given convex quadratic functions $f_i(w): \mathbb{R} \to \mathbb{R}$ for $i \in \{1,2,\dots,\mathcal{O}(n + \lambda)\}$, determine the value of $\min_w \max_i f_i(w)$.
+There exist several methods to efficiently solve this problem.
+Three representative approaches are as follows:
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Golden section search over $w$}: Minimize the convex function $\max_i f_i(w)$ via golden section search~\citep{press2007numerical}. With $T$ iterations, the time complexity is $\mathcal{O}(T(n+\lambda))$.
+    \item \textbf{Binary search over $y$ (function values)}: Given $y\in\mathbb{R}$, we can test in $\mathcal{O}(n+\lambda)$ time whether $y \ge \min_w \max_i f_i(w)$. Thus, binary search~\citep{cormen2009introduction} with $T$ iterations can solve the problem in $\mathcal{O}(T(n + \lambda))$ time.
+    \item \textbf{Exact structural analysis}: Since $\max_i f_i(w)$ is piecewise quadratic with $\mathcal{O}(n+\lambda)$ pieces by Davenport--Schinzel sequence theory~\citep{sharir1988davenport}, we can construct its exact representation in $\mathcal{O}((n+\lambda)\log(n+\lambda))$ time and then compute the exact minimum directly (unlike the previous two iterative methods).
+\end{enumerate}
+Detailed algorithms are given in Appendix~D of the full version~\cite{sato2026mathematical_arxiv}.
+By employing one of these methods, we can evaluate \cref{eq:upper_bound_relaxed_poisoning_problem} with a time complexity of either $\mathcal{O}(T(n + \lambda))$ or $\mathcal{O}((n + \lambda)\log(n + \lambda))$, thereby obtaining an upper bound on the impact of multi-point poisoning attacks (see \cref{tab:seg_e}).
+
+
+\subsection{Segment + Endpoint Attack}
+\label{sec:segment_plus_endpoint_attack}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.66\textwidth]{fig/sege.pdf}
+    \caption{Examples of the Segment + Endpoint (Seg+E) attack in original and relaxed settings.}
+    \label{fig:sege}
+    \Description{Examples of Segment + Endpoint attacks in the original and relaxed poisoning settings.}
+\end{figure}
+
+Motivated by \cref{thm:optimal_c_for_fixed_w}---which implies that under the relaxed setting with a fixed $w$, the optimal poison mass concentrates either at the two extremes or at a single interior point---we propose a simple structured attack strategy called \emph{Segment + Endpoint (Seg+E)}.
+A Seg+E attack uses as poisons at most three consecutive blocks: two on the extreme blocks adjacent to $k_1$ and $k_n$, and a single consecutive segment not adjacent to these extremes. 
+We define Seg+E in the relaxed setting (\cref{def:relaxed_poisoning_problem}) analogously: a Seg+E multiset in the relaxed setting consists of at most three integers, namely those corresponding to $k_1$, $k_n$, and a single interior integer.
+\cref{fig:sege} illustrates Seg+E attacks in the original and relaxed settings.
+The formal mathematical definition is given in Appendix~E of the full version~\cite{sato2026mathematical_arxiv}.
+
+We propose three algorithms for finding the Seg+E solution.
+As summarized in~\cref{tab:seg_e}, we refer to the exact algorithms as \emph{Exact Seg+E} and to the fast approximation for the original setting as \emph{Heuristic Seg+E}.
+First, we present an $\mathcal{O}(n\lambda^3)$-time Exact Seg+E algorithm for the original setting, followed by an $\mathcal{O}(n\lambda)$-time Exact Seg+E algorithm for the relaxed setting.
+Finally, by using the relaxed-setting solution as guidance, we design an $\mathcal{O}(n\lambda)$-time Heuristic Seg+E algorithm for the original setting, which empirically finds a solution very close to the optimal one.
+
+\paragraph{$\mathcal{O}(n\lambda^3)$-time Exact Seg+E algorithm for the original setting.}
+In the original setting, we can find an exact Seg+E solution in $\mathcal{O}(n\lambda^3)$ time.
+The number of ways to allocate the $\lambda$ poison budget to the left endpoint, the middle segment, and the right endpoint is $\mathcal{O}(\lambda^3)$.
+For each such allocation, an argument analogous to the proof of \cref{thm:structure_of_optimal_multi_point_attack} shows that the middle segment admits only $\mathcal{O}(n)$ candidate locations that need to be considered;
+see Theorem~7 in Appendix~E.2 of the full version~\cite{sato2026mathematical_arxiv} for a formal proof.
+Therefore the total number of Seg+E candidates to evaluate is $\mathcal{O}(n\lambda^3)$, and by computing the MSE for each candidate efficiently via differential updates we obtain the exact Seg+E solution in $\mathcal{O}(n\lambda^3)$ time.
+
+\paragraph{$\mathcal{O}(n\lambda)$-time Exact Seg+E algorithm for the relaxed setting.}
+In the relaxed setting, we can find an exact Seg+E solution in $\mathcal{O}(n\lambda)$ time.
+Using an argument similar to the proof of \cref{thm:d_saturation}, we first show that any exact Seg+E solution in the relaxed problem exhausts the budget $\lambda$.
+As in the original setting, the location of the middle segment admits only $\mathcal{O}(n)$ candidate positions.
+Crucially, when the number of poisons placed at the left endpoint and the middle-segment location are fixed, the optimal number of poisons assigned to the middle segment can be determined in $\mathcal{O}(1)$ time, by extending the loss to a continuous function in the middle-segment multiplicity and using its derivative to identify the optimum.
+Hence, iterating over all choices of left-endpoint count and middle-segment location (there are $\mathcal{O}(n\lambda)$ such combinations) and evaluating the corresponding MSEs yields an $\mathcal{O}(n\lambda)$-time algorithm for finding the exact Seg+E solution in the relaxed setting.
+
+\paragraph{$\mathcal{O}(n\lambda)$-time Heuristic Seg+E algorithm for the original setting.}
+We also design an $\mathcal{O}(n\lambda)$-time Heuristic Seg+E algorithm that yields a Seg+E solution that is not guaranteed to be exact but is empirically very close to the exact one.
+The heuristic algorithm leverages the Seg+E solution in the relaxed setting as a guide:
+we fix the numbers of poisons at the left endpoint, middle segment, and right endpoint to match those in the relaxed-setting solution.
+Then, we try the $\mathcal{O}(n)$ candidate middle-segment positions and select the best placement.
+Because the Seg+E solution in the relaxed setting can be found in $\mathcal{O}(n\lambda)$ time and we can evaluate the MSE for each candidate position in $\mathcal{O}(1)$ time, the overall time complexity of the heuristic algorithm is $\mathcal{O}(n\lambda)$.
+
+
+\section{Experimental Evaluation}
+\label{sec:experimental_evaluation}
+
+In this section, we experimentally evaluate our upper-bounding methods and Seg+E algorithms.
+We first assess how tightly the proposed bounds match the attack impact achieved by the greedy method (\cref{sec:experiment:upper_bound_vs_greedy}), then compare the loss achieved by Seg+E and the greedy attack (\cref{sec:experiment:greedy_vs_sege}).
+We also measure running time (\cref{sec:experiment:runningtime}), conduct ablation studies on key parameters (\cref{sec:experiment:ablation_study_of_n_and_r}), and present a detailed analysis in the small-scale setting, where the optimum is computable (\cref{sec:experiment:upper_bound_vs_greedy_brute_force}).
+Finally, we evaluate the impact of poisoning on \emph{lookup time}, i.e., the time to retrieve values from a sorted array using the linear regression model (\cref{sec:experiment:impact_of_poisoning_on_lookup_time}).
+
+\paragraph{Key take-aways.} The main findings are as follows:
+\begin{enumerate}[leftmargin=1.5em]
+\item For both real-world and synthetic datasets, there is only a small gap between the upper bound and the iterative greedy approach. This indicates that the bound is tight and that the greedy approach achieves near-optimal solutions.
+\item The Exact Seg+E attack is never worse than the greedy attack, and the Heuristic Seg+E attack always attains a loss very close to that of the Exact Seg+E attack.
+\item The upper bound can be determined in time faster than running the greedy algorithm, allowing one to effectively judge the quality of the computed solution.
+\item The tightness of the bound remains stable across both key density and dataset size, with only moderate degradation observed under extremely dense distributions.
+\item The gap decomposition analysis identifies the main source of looseness in the upper bounds: the max-min step dominates when key density is low, while the duplicate-allowing relaxation dominates when key density is extremely high.
+\item Poisoning substantially increases lookup time: at a 20\% poisoning ratio, it slows down lookups by up to $1.6\times$.
+\end{enumerate}
+
+\subsection{Experimental Setup}
+
+We implemented all upper-bounding, Seg+E, and greedy poisoning algorithms, in C++.
+All experiments were conducted on a Linux machine equipped with an Intel\textregistered~ Core\texttrademark~ i9-11900H CPU @ 2.50GHz and 64GB of memory.
+We compiled the code using GCC version 9.4.0 with the \texttt{-O3} optimization flag enabled and ran all experiments in a single-threaded setting.
+To verify that our claims hold across typical key-distribution patterns, we evaluate on several synthetic and real-world datasets used in a standard learned-index benchmark.
+
+\paragraph{Synthetic Datasets.}
+Each synthetic legitimate key set is generated based on a specified distribution (Uniform, Normal, or Exponential), random seed, range $R \in \mathbb{N}$, and value of $n \in \mathbb{N}$, using the following procedure:
+We sampled $n$ real values, scaled them to $[0, R]$, rounded to integers, and removed duplicates.
+When $R$ is small, a larger fraction of the integer domain is occupied by legitimate keys, leaving fewer integer values available for the attacker to use.
+
+\paragraph{Real-World Datasets.}
+Each real-world legitimate key set is constructed by extracting $n$ consecutive keys from a real sorted dataset, where the starting position is selected randomly.
+We use Amzn, Face, and Osmc datasets from SOSD~\cite{sosd-vldb}, a benchmark for learned indexes.
+This setup reflects the practical use case where linear regression models are often deployed as leaf models handling consecutive keys in learned indexes~\cite{ding2020alex,li2021finedex,wang2020sindex,sun2023learned}.
+
+\paragraph{Upper Bound Algorithms.}
+We evaluate the three upper bound computation algorithms described in \cref{sec:upper_bound_multi_point_poisoning_attack}.
+For the first (golden section search) and second (binary search) approaches, we fix the number of iterations $T$ to 50.
+Since the difference among their results is always very small (less than $10^{-9}$), we report results from the first algorithm unless otherwise noted (e.g., for running time evaluation in \cref{sec:experiment:runningtime}).
+
+\subsection{Upper Bound vs Greedy Poisoning}
+\label{sec:experiment:upper_bound_vs_greedy}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{fig/experiments/seed0_all.pdf}
+    \caption{$\mathrm{MSE}_\mathrm{UB}$ (our upper bound), $\mathrm{MSE}_\mathrm{G}$ (greedy attack), and $\mathrm{MSE}_\mathrm{L}$ (legitimate) for seed = 0.
+    We set $n=1{,}000$ and $R=100{,}000$.
+    We observe that $\mathrm{MSE}_\mathrm{UB} \geq \mathrm{MSE}_\mathrm{G}$ in all cases and the gap is small, which indicates that our upper bound is tight and greedy attack is close to the optimal attack.}
+    \label{fig:upper_bound_vs_legitimate_seed0}
+    \Description{Comparison of legitimate MSE, greedy-attack MSE, and upper-bound MSE across datasets and poisoning percentages for one random seed.}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\textwidth]{fig/experiments/lambda_Lgr_divided_by_Lub_all.pdf}
+    \caption{Boxplots of $\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{UB}$ over 100 seeds for each dataset and poisoning percentage.
+    We set $n=1{,}000$ and $R=100{,}000$.
+    The ratio never exceeds 1 and is always greater than $0.8$.
+    In particular, for Exponential, Amzn, Face, and Osmc, the median ratio is $\geq 0.99$, which indicates that our upper bound is tight and greedy attack is close to the optimal attack.}
+    \label{fig:upper_bound_vs_greedy}
+    \Description{Boxplots of the ratio between greedy-attack MSE and upper-bound MSE across datasets and poisoning percentages over 100 seeds.}
+\end{figure}
+
+Here, we show that the gap between the upper bound computed by our proposed method ($\mathrm{MSE}_\mathrm{UB}$) and the loss from the greedy poisoning method ($\mathrm{MSE}_\mathrm{G}$) is consistently small.
+This demonstrates that our upper bound method provides an efficient approach to measuring the impact of multi-point attacks, and that the greedy attack approximates the optimal attack reasonably well.
+
+First, \cref{fig:upper_bound_vs_legitimate_seed0} shows the comparison among $\mathrm{MSE}_\mathrm{G}$, $\mathrm{MSE}_\mathrm{UB}$, and the MSE of legitimate keys ($\mathrm{MSE}_\mathrm{L}$) for seed = 0.
+We set $n=1{,}000$ for all datasets, and set $R=100{,}000$ for synthetic data.
+The poisoning percentage is defined as $\lambda / n$.
+
+We observe that $\mathrm{MSE}_\mathrm{G}$ increases with larger poisoning percentages.
+The MSE of legitimate keys varies significantly depending on the distribution and $n$, and so does the increase in MSE caused by poisoning.
+In all cases, $\mathrm{MSE}_\mathrm{UB}$ is greater than $\mathrm{MSE}_\mathrm{G}$ and \textit{tight} in the sense that $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$ is always at least $0.81$.
+
+We further observe differences across datasets: settings that are locally closer to uniform (e.g., Uniform and Amzn) tend to yield smaller MSE on legitimate keys, yet can exhibit larger increases in MSE after the attack.
+For such near-uniform datasets, we also find that the discrepancy between $\mathrm{MSE}_\mathrm{UB}$ and $\mathrm{MSE}_\mathrm{G}$ tends to be larger.
+
+Next, \cref{fig:upper_bound_vs_greedy} presents the distribution of the ratio $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$ over 100 seeds.
+Values of this ratio close to $1$ indicate a tight upper bound and near-optimal performance of the greedy attack, whereas values close to $0$ indicate a loose bound or weak greedy performance.
+Each boxplot represents the distribution across 100 seeds for a given configuration of ($n$, dataset, poisoning percentage).
+Note that the randomness comes only from data generation; all algorithms are deterministic.
+We set $n=1{,}000$ for all datasets, and set $R=100{,}000$ for synthetic data.
+
+We observe that, in every configuration, $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$ never exceeds 1, and the median over 100 trials is always above 0.85.
+In particular, for Exponential, Amzn, Face, and Osmc, the median is consistently above 0.99, showing that our upper bound and the greedy results are very close.
+For Uniform and Normal, the gap between upper bound and greedy results tends to grow, especially when the poisoning percentage is large.
+That said, across all $6{,}000$ trials, the ratio never falls below 0.8, and the overall average remains as high as 0.97.
+This demonstrates that (i) the greedy multi-point poisoning attack leaves at most about 25\% room for improvement (and only around 3\% on average), and (ii) our proposed upper bound is consistently tight across datasets and settings.
+
+\subsection{Greedy Poisoning vs Seg+E}
+\label{sec:experiment:greedy_vs_sege}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/lambda_Lgr_divided_by_Lconsec_all.pdf}
+  \caption{Boxplots of $\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{Seg+E}$ over 100 seeds for each dataset and poisoning percentage.
+  We set $n=1{,}000$ and $R=100{,}000$.
+  The ratio never exceeds 1, that is, the Seg+E attack is never worse than the greedy attack.}
+  \label{fig:greedy_vs_sege}
+  \Description{Boxplots of the ratio between greedy-attack MSE and Exact Seg+E attack MSE across datasets and poisoning percentages over 100 seeds.}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/lambda_Lconsec_using_relaxed_solution_divided_by_Lconsec_all.pdf}
+  \caption{Boxplots of $\mathrm{MSE}_\mathrm{Seg+E(H)}/\mathrm{MSE}_\mathrm{Seg+E} - 1$ over 100 seeds for each dataset and poisoning percentage (for better visibility, we plot the value obtained by subtracting 1 from the ratio).
+  We set $n=1{,}000$ and $R=100{,}000$.
+  The ratio consistently remains very close to 1, indicating that Heuristic Seg+E achieves losses nearly identical to those of Exact Seg+E.}
+  \label{fig:sege_h_vs_sege}
+  \Description{Boxplots of the ratio between the MSE of Heuristic Seg+E and that of Exact Seg+E across datasets and poisoning percentages over 100 seeds.}
+\end{figure}
+
+Here, we compare $\mathrm{MSE}_\mathrm{G}$, $\mathrm{MSE}_\mathrm{Seg+E}$ (the MSE obtained by Exact Seg+E), and $\mathrm{MSE}_\mathrm{Seg+E(H)}$ (the MSE obtained by Heuristic Seg+E).
+
+\cref{fig:greedy_vs_sege} shows the distribution of $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_{\mathrm{Seg+E}}$ over 100 seeds.
+A ratio below 1 means that Exact Seg+E yields a larger MSE than Greedy.
+Across all $3{,}000$ cases (6 datasets $\times$ 5 poisoning percentages $\times$ 100 seeds), the ratio never exceeds 1, i.e., Exact Seg+E is never worse than the Greedy.
+For the Uniform and Amzn datasets, the two methods sometimes differ noticeably; the ratio $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{Seg+E}$ can drop to below 0.86, which means that Seg+E yields up to about 1.16 times larger MSE than Greedy.
+
+\cref{fig:sege_h_vs_sege} shows the distribution of $\mathrm{MSE}_\mathrm{Seg+E(H)}/\mathrm{MSE}_\mathrm{Seg+E}$ over 100 seeds.
+Over the entire set of $3{,}000$ measurements, we observed that this ratio is always greater than $0.99996$.
+This indicates that the Heuristic Seg+E attack is very close to the Exact Seg+E attack.
+Although $\mathrm{MSE}_\mathrm{Seg+E(H)}$ is rarely worse than $\mathrm{MSE}_\mathrm{G}$, the maximum observed value of the ratio $\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{Seg+E(H)}$ is only $1.00004$.
+In other words, Heuristic Seg+E provides an excellent trade-off between computational efficiency and attack effectiveness.
+
+\subsection{Running time Evaluation}
+\label{sec:experiment:runningtime}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/lambda_time_all.pdf}
+  \caption{Running time vs poisoning percentage.
+  We set $n=1{,}000$ and $R=100{,}000$.
+  The running time of the greedy poisoning method grows linearly with the poisoning percentage (consistent with $\mathcal{O}((n + \lambda) \lambda)$ time complexity), whereas our upper-bound methods (Golden, Binary, Strict) are nearly flat (consistent with $\mathcal{O}(T(n + \lambda))$ or $\mathcal{O}((n + \lambda) \log(n + \lambda))$ time complexity).}
+  \label{fig:runningtime_percentage}
+  \Description{Running time of greedy, upper-bound, and Seg+E algorithms as a function of poisoning percentage across datasets.}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/n_time_all.pdf}
+  \caption{Running time vs $n$.
+  We set the poisoning percentage to 10\% and $R=100{,}000$.
+  The running time of the greedy poisoning method grows quadratically with $n$ (consistent with $\mathcal{O}((n + \lambda) \lambda)$ time complexity), whereas our upper-bound methods (Golden, Binary, Strict) grow linearly with $n$ (consistent with $\mathcal{O}(T(n + \lambda))$ or $\mathcal{O}((n + \lambda) \log(n + \lambda))$ time complexity).}
+  \label{fig:runningtime_n}
+  \Description{Running time of greedy, upper-bound, and Seg+E algorithms as a function of the number of legitimate keys across datasets.}
+\end{figure}
+
+We measure the running time of our three upper-bounding methods, whose time complexities are $\mathcal{O}(T(n + \lambda))$, $\mathcal{O}(T(n + \lambda))$, and $\mathcal{O}((n + \lambda) \log(n + \lambda))$, respectively.
+We also report the running time of our Seg+E algorithms (Exact: $\mathcal{O}(n\lambda^3)$, Heuristic: $\mathcal{O}(n\lambda)$, and Exact in the relaxed setting: $\mathcal{O}(n\lambda)$), as well as the running time of the greedy poisoning attack~\citep{kornaropoulos2022price}, which runs in $\mathcal{O}((n + \lambda) \lambda)$ time.
+
+\cref{fig:runningtime_percentage} shows the relationship between poisoning percentage and their running time for each algorithm.
+Since $\lambda$ is the product of $n$ and the poisoning percentage, $\lambda$ is proportional to the poisoning percentage.
+We set $n=1{,}000$ and $R=100{,}000$.
+We see that the running time of the greedy poisoning increases linearly with poisoning percentage, aligning with the complexity $\mathcal{O}((n + \lambda) \lambda)$ (note that $\lambda < n$ in our setting).
+In contrast, the proposed upper-bound algorithms (Golden, Binary, Strict) show minimal change in running time.
+This is because, when $\lambda < n$, the time complexity of the proposed upper-bound algorithms is $\mathcal{O}(n)$ or $\mathcal{O}(n \log n)$.
+
+As expected, the $\mathcal{O}(n \lambda^3)$-time Exact Seg+E algorithm is significantly slower than the other algorithms, taking more than $10{,}000$ times longer than the greedy algorithm.
+In contrast, the Exact Seg+E algorithm in the relaxed setting and the Heuristic Seg+E algorithm, both of which run in $\mathcal{O}(n\lambda)$ time, are much faster.
+However, they are still about 20 times slower than the greedy algorithm despite having the same asymptotic time complexity.
+This is because the Seg+E algorithms involve heavier constant-time operations, such as solving cubic equations, resulting in a larger constant factor.
+
+\cref{fig:runningtime_n} shows the relationship between $n$ and the running time of each algorithm.
+We set the poisoning percentage to 10\% and $R=100{,}000$.
+The running time of the greedy poisoning method increases quadratically with $n$, consistent with the time complexity $\mathcal{O}((n + \lambda) \lambda)$.
+In contrast, the proposed upper-bound algorithms (Golden, Binary, Strict) scale as $\mathcal{O}(n)$ or $\mathcal{O}(n\log n)$ and are much faster than the greedy algorithm.
+In particular, the two approximation methods (Golden and Binary) are extremely fast, with running times no greater than 0.003 seconds.
+
+These results show that our methods compute upper bounds in practical time even for large $n$ and $\lambda$.
+This efficiency enables downstream uses, such as lightweight attack-quality assessment and as a surrogate objective for higher-level attack-generation procedures; we discuss these use cases in \cref{sec:discussion}.
+
+\subsection{Ablation Study of \texorpdfstring{$n$ and $R$}{n and R}}
+\label{sec:experiment:ablation_study_of_n_and_r}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/n_LgrLub_all.pdf}
+  \caption{$\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{UB}$ vs $n$.
+  We set the poisoning percentage to 10\% and $R=100{,}000$.
+  As $n$ increases, $\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{UB}$ shows a slight tendency to decrease.}
+  \label{fig:ablation_n}
+  \Description{Ratio between greedy-attack MSE and upper-bound MSE as a function of the number of legitimate keys across datasets.}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.66\textwidth]{fig/experiments/R_LgrLub_all.pdf}
+  \caption{$\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{UB}$ vs $R$ for synthetic data.
+  We set the poisoning percentage to 10\% and $n=1{,}000$ for all datasets.
+  When $R$ is quite small, the ratio tends to decrease.}
+  \label{fig:ablation_R}
+  \Description{Ratio between greedy-attack MSE and upper-bound MSE as a function of the key range for synthetic datasets.}
+\end{figure}
+
+Here, we investigate how $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$ changes with respect to $n$ and $R$.
+\cref{fig:ablation_n} shows the relationship between $n$ and the ratio $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$ for synthetic data.
+We set the poisoning percentage to 10\% and $R=100{,}000$ for synthetic data.
+As $n$ increases, we observe a slight decreasing trend in the ratio.
+That is, the ratio remains consistently tight: the minimum value is $0.64$ (or $0.73$ if excluding a single outlier seed from Amzn), while the average value is always above $0.91$.
+This indicates that, regardless of $n$, our proposed upper bound tightly bounds the attack impact.
+
+\cref{fig:ablation_R} shows the relationship between $R$ and $\mathrm{MSE}_\mathrm{G} / \mathrm{MSE}_\mathrm{UB}$.
+We set the poisoning percentage to 10\% and $n=1{,}000$ for all datasets.
+We observe that the smaller the value of $R$, the smaller the ratio tends to be.
+This is expected because our upper bound is obtained by relaxing the constraint to allow duplicate keys, and the effect of this relaxation becomes more pronounced when $R$ is small.
+In particular, the ratio worsens when $R < 10^4$.
+However, note that $R=10^4$ already corresponds to a fairly narrow key range (i.e., a dense distribution), where 10\% of the integers contained in the range are legitimate.
+In the real datasets we used, the range spanned by $n=1{,}000$ consecutive keys is at least $1.8\times 10^{13}$ (Amzn), $2.8\times 10^4$ (Face), and $2.3\times 10^{10}$ (Osmc).
+Thus, the degradation observed for small $R$ is negligible in practice, and our upper bound remains tight under realistic settings.
+
+\subsection{Detailed Analysis in Small-Scale Settings}
+\label{sec:experiment:upper_bound_vs_greedy_brute_force}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/lambda_L_ratios_brute_force_all.pdf}
+  \caption{Boxplots of the ratios $\rho_\mathrm{G}$, $\rho_\mathrm{R}$, and $\rho_\mathrm{UB}$, defined in \cref{eq:rho_definitions}, over 100 seeds for each dataset and poisoning percentage.
+  We set $n=50$ and $R=1{,}000$.
+  All ratios remain close to $1$ (minimum $0.92$), with $\mathrm{MSE}_\mathrm{OPT}/\mathrm{MSE}_\mathrm{ROPT}$ particularly tight.}
+  \label{fig:brute_force_vs_greedy}
+  \Description{Boxplots of the ratios rho_G, rho_R, and rho_UB across datasets and poisoning percentages in small-scale settings over 100 seeds.}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.66\textwidth]{fig/experiments/R_L_ratios_brute_force_all.pdf}
+  \caption{The ratios ($\rho_\mathrm{G}$, $\rho_\mathrm{R}$, and $\rho_\mathrm{UB}$) vs $R$ for synthetic data.
+  We set the poisoning percentage to 10\% and $n=50$.
+  $\rho_\mathrm{UB}$ and $\rho_\mathrm{G}$ remain stable as $R$ varies, whereas $\rho_\mathrm{R}$ stays close to $1$ for large $R$ but drops when $R$ is small.}
+  \label{fig:brute_force_vs_greedy_R}
+  \Description{The ratios rho_G, rho_R, and rho_UB as a function of the key range for synthetic datasets in small-scale settings.}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.66\textwidth]{fig/counter_example.pdf}
+  \caption{A counter example where the Exact Seg+E solution is not globally optimal.
+  The legitimate key set is $\mathcal{K}=\{0, 1, \dots, 16, 48, 49, \dots, 64\} \setminus \{1,8,56,63\}$.
+  The optimal solution is $\mathcal{P}=\{8,56\}$, but the Exact Seg+E solution is $\mathcal{P}=\{1,8\}$.}
+  \label{fig:counter_example}
+  \Description{Counterexample showing a case where the Exact Seg+E solution is not globally optimal.}
+\end{figure}
+
+Here, we present a detailed analysis in the small-scale setting, where our theory makes it possible to obtain the optimal solution within practical time.
+As explained in \cref{sec:multi_point_poisoning_attack}, \cref{thm:structure_of_optimal_multi_point_attack} implies that the number of candidates for the optimal solution to the original problem is at most $\binom{2n - 2 + \lambda}{\lambda}$, allowing us to compute $\mathrm{MSE}_\mathrm{OPT}$ in $\mathcal{O}\left((n+\lambda)\binom{2n - 2 + \lambda}{\lambda}\right)$ time.
+Similarly, \cref{thm:structure_of_optimal_multi_point_attack} and \cref{thm:d_saturation} imply that there are at most $\binom{n+\lambda-1}{\lambda}$ candidates in the relaxed setting, allowing us to compute $\mathrm{MSE}_\mathrm{ROPT}$ in $\mathcal{O}\left((n+\lambda)\binom{n+\lambda-1}{\lambda}\right)$ time.
+Hence, we can compute the global optimum for moderately small $n$ and $\lambda$; in our experiments, we set $n=50$ and $\lambda \leq 5$.
+
+First, we examine the gap between the greedy solution and the upper bound.
+Since our algorithm produces upper bounds by further upper-bounding the optimal solution of the relaxed problem, letting $\mathrm{MSE}_\mathrm{ROPT}$ as the MSE under the optimal solution of the relaxed problem, the inequalities $\mathrm{MSE}_\mathrm{G} \leq \mathrm{MSE}_\mathrm{OPT} \leq \mathrm{MSE}_\mathrm{ROPT} \leq \mathrm{MSE}_\mathrm{UB}$ hold.
+Accordingly, we evaluate the following three ratios:
+\begin{equation}
+\label{eq:rho_definitions}
+    \rho_\mathrm{G} \coloneq \frac{\mathrm{MSE}_\mathrm{G}}{\mathrm{MSE}_\mathrm{OPT}}, \quad
+    \rho_\mathrm{R} \coloneq \frac{\mathrm{MSE}_\mathrm{OPT}}{\mathrm{MSE}_\mathrm{ROPT}}, \quad
+    \rho_\mathrm{UB} \coloneq \frac{\mathrm{MSE}_\mathrm{ROPT}}{\mathrm{MSE}_\mathrm{UB}}.
+\end{equation}
+All of these ratios are less than or equal to 1.
+Values of $\rho_\mathrm{G}$ near $1$ indicate that the greedy attack is close to optimal,
+values of $\rho_\mathrm{R}$ near $1$ indicate that the gap introduced by the relaxation is small,
+and values of $\rho_\mathrm{UB}$ near $1$ indicate that the max-min upper-bounding step (\cref{eq:upper_bound_relaxed_poisoning_problem}) is tight.
+Note that the product of these ratios equals the ratio examined in the previous sections, $\mathrm{MSE}_\mathrm{G}/\mathrm{MSE}_\mathrm{UB}$.
+By decomposing it in this manner, we can analyze in detail which component contributes to the observed deviation from $1$.
+
+\cref{fig:brute_force_vs_greedy} reports the distributions of $\rho_\mathrm{G}$, $\rho_\mathrm{R}$, and $\rho_\mathrm{UB}$ over 100 seeds;
+we zoom the $y$-axis to a narrow neighborhood of 1 for readability.
+Across datasets and settings, all three ratios are consistently close to 1 (all exceed $0.92$) and exhibit a mild decreasing trend as $\lambda$ increases.
+We observe that $\rho_\mathrm{G}$ tends to be smaller (i.e., the gap between the greedy and the optimal solutions is larger) on Uniform, Amzn, and Osmc.
+We also observe that $\rho_\mathrm{R}$ is generally closer to 1 than $\rho_\mathrm{UB}$, suggesting that the main source of looseness comes from the max-min inequality rather than from permitting duplicate poisons.
+We also note that $\rho_\mathrm{UB}$ is most frequently smaller on the Normal dataset, whereas $\rho_\mathrm{R}$ tends to be smaller on the Face dataset.
+
+\cref{fig:brute_force_vs_greedy_R} studies how the ratios vary with $R$ on synthetic data (with $n=50$ and a 10\% poisoning percentage).
+We find that both $\rho_\mathrm{UB}$ and $\rho_\mathrm{G}$ are largely insensitive to $R$.
+In contrast, $\rho_\mathrm{R}$ is close to 1 for moderately large $R$ (e.g., $R\ge 1{,}000$) but can be somewhat smaller when $R$ is small.
+Taken together with the ablation in \cref{sec:experiment:ablation_study_of_n_and_r}, these findings reinforce that the dominant contributor to the overall gap at small $R$ is the duplicate-allowing relaxation, whereas for larger $R$ the relaxation is tight and the remaining looseness mainly stems from the max-min upper-bounding step.
+
+Next, we compare Seg+E with the optimal solution.
+We set $n=50$ and $R=1{,}000$.
+The summary statistics of $\mathrm{MSE}_\mathrm{Seg+E}/\mathrm{MSE}_\mathrm{OPT}$ for both the original and relaxed settings are reported in \cref{tab:seg_e} as \textit{Empirical Perf. Ratio}.
+We observed that, under both the original and relaxed settings, the Exact Seg+E solution always matched the global optimal solution in all $3{,}000$ cases (6 datasets, 5 poisoning percentages, 100 seeds).
+However, in the original setting, we have already found corner cases where the Exact Seg+E solution is not globally optimal.
+\cref{fig:counter_example} (along with additional corner cases in Appendix~F of the full version~\cite{sato2026mathematical_arxiv}) shows one such example.
+Here, the optimal solution is $\mathcal{P}=\{8,56\}$, consisting of two isolated points, which is not Seg+E and has larger MSE than the Exact Seg+E solution.
+Thus, while there exist rare corner cases where Seg+E is suboptimal, it almost always coincides with the global optimum in practice.
+
+\subsection{Impact of Poisoning on Lookup Time}
+\label{sec:experiment:impact_of_poisoning_on_lookup_time}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\textwidth]{fig/experiments/lambda_query_time_all.pdf}
+  \caption{Lookup time. The lookup time includes both regression inference and exponential search. We measure it 10 times for each key and report the average. We set $n = 1{,}000$ and $R = 100{,}000$. Poisoning increases the lookup time by up to 1.6 times.}
+  \label{fig:lookuptime_percentage}
+  \Description{Lookup time before and after poisoning, including random-poisoning and lower-bound baselines, across datasets and poisoning percentages.}
+\end{figure}
+
+To quantify the practical slowdown caused by poisoning in linear models of learned indexes, we measure its impact on the \emph{lookup time}.
+We define lookup time as the time from receiving a query key to obtaining its position in the sorted array, i.e., the total time for linear-regression inference and an exponential search around the predicted position.
+We query all legitimate keys, repeat the measurement 10 times per key, and report the average.
+We set $n=1{,}000$ and $R=100{,}000$.
+As a reference, we include a random-poisoning baseline, where poisons are sampled uniformly from the key domain, and we also report the time of \texttt{std::lower\_bound}.
+
+\Cref{fig:lookuptime_percentage} reports lookup time before and after poisoning.
+We find that poisoning increases lookup time by up to $1.6\times$ at 20\% poisoning.
+By contrast, randomly chosen poisons barely affect lookup time, indicating that poisons generated by Greedy~\cite{kornaropoulos2022price} or our Seg+E algorithm increase the lookup time effectively.
+These results quantify how poisoning can slow down the leaf-model lookup routine by degrading the model accuracy, suggesting that poisoning can measurably increase the end-to-end lookup time in learned indexes.
+
+\section{Discussion}
+\label{sec:discussion}
+
+\paragraph{On Defending Against Poisoning Attacks.}
+Defending linear regression over the CDF against poisoning attacks is challenging, as also discussed in \cite{kornaropoulos2022price}.
+In our experiments, adding only 4\% poison points increased the MSE by up to 10$\times$, suggesting that simply tracking the cardinality of the key set is unlikely to be sufficient for reliable poisoning detection.
+Furthermore, poisons are not outliers in this setting: they lie within the domain and are placed adjacent to legitimate keys, making them hard to detect or mitigate with robust regression methods such as Huber regression~\cite{huber1992robust} and RANSAC~\cite{fischler1981random}.
+Developing defenses tailored to regression over the CDF remains an important direction for future work.
+
+\paragraph{On Using the Upper Bound for Defense.}
+Our upper bound provides a worst-case guarantee that the poisoning impact never exceeds the bound.
+For example, if an index must operate within a tolerance of at most a $10\times$ increase in MSE, a defender can estimate how many additional keys can be inserted while ensuring that the MSE provably remains within this range.
+
+\paragraph{On Using the Upper Bound for Attack.}
+Computing the upper bound is substantially faster than the greedy attack (\cref{sec:experiment:runningtime}), enabling several downstream uses.
+First, an attacker can use the bound to cheaply assess candidate solutions: one can run the upper-bound method in parallel with the greedy attack and stop early when the gap is small; otherwise, switch to a more sophisticated (and potentially more expensive) attack algorithm to approach the optimum.
+Second, the bound can serve as a proxy for the post-attack MSE in higher-level attack-generation procedures.
+For example, the RMI attack of \citet{kornaropoulos2022price} performs hill climbing by repeatedly evaluating the post-attack MSE of each linear model; replacing these evaluations with our bound can substantially reduce the computational cost.
+
+\paragraph{On Empirical Observations and Conjectures.}
+Based on extensive experiments and analyses, we report several empirical observations and formulate key conjectures (see Appendix~F of the full version~\cite{sato2026mathematical_arxiv} for details).
+First, we observe that optimal poisons tend to concentrate near the endpoints or near locations where the regression line intersects the point sequence induced by the legitimate keys (Observation~3);
+Appendix~F of the full version~\cite{sato2026mathematical_arxiv} also provides an intuitive mathematical explanation for this phenomenon.
+As observed in \cref{sec:experiment:upper_bound_vs_greedy_brute_force}, Seg+E matches the optimum in many cases, while \cref{fig:counter_example} shows intentionally constructed corner cases where Seg+E is not optimal (Observation~4).
+Moreover, in every instance we tested, Seg+E is optimal in the relaxed setting; we leave as a conjecture that this holds in general (Conjecture~1).
+We also propose an auxiliary conjecture (Conjecture~2) which, if proven, would imply Conjecture~1.
+
+\paragraph{On Non-Integer Keys.}
+Although we state the problem for integer keys, the same analyses can be extended to non-integer keys.
+For ordered non-integer keys (e.g., strings), we can apply an order-preserving bijection to map them to a contiguous integer range.
+For multi-dimensional keys, as in prior spatial learned indexes~\cite{wang2019learned,wang2020spatial}, we can map them to one-dimensional integer keys via space-filling curves.
+Training and poisoning are performed on the resulting integers, and all of our analyses apply directly.
+
+\paragraph{On the Implications for Learned Indexes.}
+Directly applying our analysis to learned indexes (e.g., RMI~\cite{kraska2018case_li}) is not feasible because they are hierarchical and nonlinear.
+However, typical learned indexes rely on a large number of linear regression models.
+In such cases, our analysis can be applied to obtain (near-)optimal attacks or upper bounds for each linear regression model.
+Moreover, motivated by the performance of our Seg+E technique, we conjecture that for some models, a global worst-case attack influences only a small part of the model.
+
+\paragraph{On Dynamic Settings.}
+Our contributions may also offer insights into dynamic settings, where the key set evolves through updates and an attacker injects poisons sequentially to maximize cumulative loss.
+A key challenge is to quantify the gap between online attacks (which choose poisons without knowing future updates) and offline attacks (which plan poisons with full knowledge of the update sequence), and to understand how defenses should adapt.
+Our upper bound enables lightweight evaluation of the worst-case impact at each update step.
+Moreover, the structure of our Seg+E approach may inspire simple heuristics for online poison selection, and it may help defenders design triggers for poisoning detection and retraining.
+
+
+\section{Limitations and Future Work}
+\label{sec:limitations_and_future_work}
+
+One limitation of our theoretical guarantees is that we were unable to prove the convexity of the loss function in single-point poisoning attacks.
+While experimental results consistently suggest that this convexity holds, we could not provide a formal proof.
+Although our current findings are sufficient to ensure that the single-point poisoning attack can efficiently lead to the optimal solution, proving this convexity would be a valuable theoretical insight.
+
+Additionally, developing methods to compute tighter bounds remains an important direction for future research.
+We observed that the gap between our upper bound and the greedy solution can sometimes be relatively large.
+Part of this gap reflects the difference between the greedy method and the true optimum, but some of it stems from the looseness of our bound itself (as discussed in \cref{sec:experiment:upper_bound_vs_greedy_brute_force}).
+This looseness stems from two approximations made in the derivation of the bound:
+(i) allowing duplicate poison keys, and
+(ii) swapping the order of $\min_{w}$ and $\max_{\bm{d}}$ in \cref{eq:upper_bound_relaxed_poisoning_problem}.
+Avoiding these approximations and designing methods to obtain tighter bounds remain important topics for future work.
+
+Another important future direction is to extend our analysis beyond linear regression.
+We deliberately focused on linear regression, as it is the simplest and most widely used leaf model in learned indexes.
+This restriction enabled a clean theoretical foundation and clear insights into adversarial robustness, but it also limits generality.
+A natural next step is to broaden the framework to nonlinear regression models (e.g., higher-order polynomials or neural networks) and to multi-stage learned indexes.
+
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+In this work, we provided the first theoretical advancements on single-point and multi-point poisoning attacks against linear regression models trained on CDFs.
+For single-point attacks, we proved that a previously proposed heuristic---whose optimality had remained unclear---is indeed guaranteed to yield the optimal solution.
+For multi-point attacks, we derived the key structural properties of the optimal attack, proposed methods to guarantee an upper bound on the achievable loss, and proposed algorithms to find exact and heuristic Seg+E solutions efficiently.
+Through experiments, we confirmed that the greedy poisoning method achieves near-optimal attacks, and at the same time, our methods tightly upper-bound the actual attack impact.
+Overall, our contributions advance the theoretical understanding of linear regression models on CDFs, providing a foundation for analyzing both the vulnerabilities and robustness of learned indexes under adversarial conditions.
+
+
+\begin{acks}
+This work was supported by the JSPS Bilateral Program (Grant Number JPJSBP120259915) and by JSPS KAKENHI (Grant Number 25KJ0754).
+\end{acks}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{
+    bib/attack,
+    bib/classic_index,
+    bib/learned_data_structures,
+    bib/learned_index,
+    bib/others
+}
+
+
+\end{document}
+\endinput

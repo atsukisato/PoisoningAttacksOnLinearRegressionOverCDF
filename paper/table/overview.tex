@@ -1,0 +1,35 @@
+\begin{table*}[t]
+    \centering
+    \caption{Overview over time complexity and empirical performance of poisoning attacks and upper-bounding methods under the original setting~\cite{kornaropoulos2022price} (duplicate keys disallowed; \cref{def:poisoning_linear_regression_on_cdfs}) and the relaxed setting (duplicate keys allowed; \cref{def:relaxed_poisoning_problem}).
+    Here, $n$ is the number of legitimate keys, $\lambda$ is the poisoning budget, and $T$ is the number of iterations in our upper-bounding methods.
+    \textit{Empirical Perf. Ratio} is the achieved MSE (attacks) or the bound (upper bounds) normalized by the optimal-attack MSE over $3{,}000$ cases in \cref{sec:experiment:upper_bound_vs_greedy_brute_force} (values closer to $1$ indicate a better attack or a tighter upper bound).}
+    \label{tab:seg_e}
+    \footnotesize
+    \setlength{\tabcolsep}{4pt}
+    {\renewcommand{\arraystretch}{0.93}
+    \begin{tabular}{@{}lcccc@{}}
+        \toprule
+        & \multicolumn{2}{c}{Original Setting (\cref{def:poisoning_linear_regression_on_cdfs})} & \multicolumn{2}{c}{Relaxed Setting (\cref{def:relaxed_poisoning_problem})} \\ 
+        \cmidrule(lr){2-3} \cmidrule(lr){4-5}
+        Algorithm & Time Complexity & \makecell{Empirical Perf. Ratio} & Time Complexity & \makecell{Empirical Perf. Ratio} \\
+        \midrule
+        Greedy~\cite{kornaropoulos2022price}
+            & $\mathcal{O}(n \lambda)$ & $\geq\!0.933$
+            & - & - \\ \midrule
+        Exact Seg+E (Ours)
+            & $\mathcal{O}(n \lambda^3)$ & $1$
+            & $\mathcal{O}(n \lambda)$ & $1$ \\
+        Heuristic Seg+E (Ours)
+            & $\mathcal{O}(n \lambda)$ & $\geq\!0.998$
+            & - & -\\
+        Optimal (Ours)
+            & $\mathcal{O}\!\left((n + \lambda) \binom{2n-2+\lambda}{\lambda}\right)$ & 1
+            & $\mathcal{O}\!\left((n + \lambda) \binom{n+\lambda-1}{\lambda}\right)$ & 1 \\
+        \midrule
+        Upper Bound (Ours)
+            & \makecell{$\mathcal{O}(T(n + \lambda))$ or \\$\mathcal{O}((n + \lambda) \log (n + \lambda))$}  & $\leq\!1.092$
+            & \makecell{$\mathcal{O}(T(n + \lambda))$ or \\$\mathcal{O}((n + \lambda) \log (n + \lambda))$}  & $\leq\!1.087$ \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table*}

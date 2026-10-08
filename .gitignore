@@ -1,0 +1,26 @@
+.idea/
+build/
+cmake-build-debug/
+cmake-build-release/
+data/
+*~
+\#*
+*ipynb*
+.venv/
+.vscode/
+*.pyc
+nohup.out
+.DS_Store
+results/*.log
+
+# Paper related files
+paper/main.pdf
+paper/main.out
+paper/main.log
+paper/main.fls
+paper/main.fdb_latexmk
+paper/main.blg
+paper/main.bbl
+paper/main.aux
+paper/main.synctex.gz
+paper/comment.cut
