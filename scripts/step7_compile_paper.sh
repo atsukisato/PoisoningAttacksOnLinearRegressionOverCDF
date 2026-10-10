@@ -71,10 +71,23 @@ for src in "${EXPERIMENT_TABLES[@]}"; do
 done
 echo ""
 
-cd "$PAPER_DIR"
+# Use a private source snapshot: editor and Docker builds must not share
+# auxiliary files (including comment.cut, which is written in the cwd).
+PAPER_BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/poisoning-paper.XXXXXXXX")"
+cleanup_paper_build() {
+    local status=$?
+    if [ "$status" -eq 0 ]; then
+        rm -rf "$PAPER_BUILD_DIR"
+    else
+        echo "[ERROR] Paper build files retained at: $PAPER_BUILD_DIR"
+    fi
+}
+trap cleanup_paper_build EXIT
+cp -R "$PAPER_DIR/." "$PAPER_BUILD_DIR/"
+cd "$PAPER_BUILD_DIR"
 
-# Drop host/Docker-absolute-path latexmk state that breaks remounted builds
-echo "[PAPER] Cleaning previous LaTeX build artifacts..."
+# Discard copied state from previous host/Docker builds only in the snapshot.
+echo "[PAPER] Building in isolated directory: $PAPER_BUILD_DIR"
 rm -f \
   main.aux main.bbl main.blg main.fls main.fdb_latexmk \
   main.log main.out main.synctex.gz main.pdf comment.cut
@@ -95,10 +108,12 @@ else
     exit 1
 fi
 
-if [ ! -f "$PAPER_DIR/main.pdf" ]; then
+if [ ! -f "$PAPER_BUILD_DIR/main.pdf" ]; then
     echo "[ERROR] Compilation finished but main.pdf was not produced."
     exit 1
 fi
+
+cp -f "$PAPER_BUILD_DIR/main.pdf" "$PAPER_DIR/main.pdf"
 
 echo "[OK] Paper compilation completed"
 echo "  PDF: $PAPER_DIR/main.pdf"

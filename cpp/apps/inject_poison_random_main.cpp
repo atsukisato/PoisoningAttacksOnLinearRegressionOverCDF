@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <set>
 
+// Fixed seed for reproducible random poison selection
+constexpr std::uint64_t kPoisonSelectionSeed = 42;
+
 void print_usage(const char* prog_name) {
     std::cout << "Usage: " << prog_name << " <input_file> <output_file> <poison_num> <json_output_file>" << std::endl;
     std::cout << "Inject random poison into a single dataset file" << std::endl;
@@ -42,7 +45,7 @@ int main(int argc, char* argv[]) {
             std::uint32_t minv = data.front();
             std::uint32_t maxv = data.back();
 
-            std::mt19937_64 rng(std::random_device{}());
+            std::mt19937_64 rng(kPoisonSelectionSeed);
             std::uniform_int_distribution<std::uint64_t> dist(minv, maxv);
 
             const size_t MAX_TRIALS = 100 * poison_num;
@@ -106,7 +109,7 @@ int main(int argc, char* argv[]) {
             std::uint64_t minv = data.front();
             std::uint64_t maxv = data.back();
 
-            std::mt19937_64 rng(std::random_device{}());
+            std::mt19937_64 rng(kPoisonSelectionSeed);
             std::uniform_int_distribution<std::uint64_t> dist(minv, maxv);
             
             const size_t MAX_TRIALS = 100 * poison_num;
