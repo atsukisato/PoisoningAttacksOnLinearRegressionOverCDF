@@ -87,19 +87,19 @@ cd "$BUILD_DIR"
 
 # Function to measure query time for a dataset
 run_measure_query_time() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -112,30 +112,30 @@ run_measure_query_time() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a RANDOM-poison dataset (separate directory)
 run_measure_query_time_random() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -148,30 +148,30 @@ run_measure_query_time_random() {
         return
     fi
 
-    echo "    Measuring RANDOM query time for: $input_file_name (lambda=$poison_num)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring RANDOM query time for: $input_file_path (lambda=$poison_num)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      RANDOM query time measure completed"
     else
-        echo "      [ERROR] Error measuring RANDOM query time $input_file_name"
+        echo "      [ERROR] Error measuring RANDOM query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a dataset (consecutive approach)
 run_measure_query_time_consecutive() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -184,30 +184,30 @@ run_measure_query_time_consecutive() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num, consecutive)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num, consecutive)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a dataset (consecutive with endpoints approach)
 run_measure_query_time_consecutive_w_endpoints() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -220,30 +220,30 @@ run_measure_query_time_consecutive_w_endpoints() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num, consecutive with endpoints)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num, consecutive with endpoints)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a dataset (consecutive with endpoints approach (duplicate allowed))
 run_measure_query_time_consecutive_w_endpoints_duplicate_allowed() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -256,30 +256,30 @@ run_measure_query_time_consecutive_w_endpoints_duplicate_allowed() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num, consecutive with endpoints duplicate allowed)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num, consecutive with endpoints duplicate allowed)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a dataset (consecutive with endpoints approach (using relaxed solution))
 run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -292,31 +292,31 @@ run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num, consecutive with endpoints using relaxed solution)"
-    echo "./measure_query_time \"$DATA_DIR/${input_file_name}\" \"$DATA_DIR/${legitimate_file_name}\" \"$query_time_json_file\""
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num, consecutive with endpoints using relaxed solution)"
+    echo "./measure_query_time \"$input_file_path\" \"$legitimate_file_path\" \"$query_time_json_file\""
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
 
 # Function to measure query time for a dataset (duplicate allowed approach)
 run_measure_query_time_duplicate_allowed() {
-    local input_file_name="$1"
-    local legitimate_file_name="$2"
+    local input_file_path="$1"
+    local legitimate_file_path="$2"
     local poison_num="$3"
     local base_output_name="$4"
     local dataset_name="$5"
     local n_value="$6"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate keys file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate keys file not found: $legitimate_file_path"
         return
     fi
 
@@ -329,11 +329,11 @@ run_measure_query_time_duplicate_allowed() {
         return
     fi
 
-    echo "    Measuring query time for: $input_file_name (lambda=$poison_num, duplicate allowed)"
-    if ./measure_query_time "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$query_time_json_file" 2>/dev/null; then
+    echo "    Measuring query time for: $input_file_path (lambda=$poison_num, duplicate allowed)"
+    if ./measure_query_time "$input_file_path" "$legitimate_file_path" "$query_time_json_file" 2>/dev/null; then
         echo "      Query time measure completed"
     else
-        echo "      [ERROR] Error measuring query time $input_file_name"
+        echo "      [ERROR] Error measuring query time $input_file_path"
         exit 1
     fi
 }
@@ -350,21 +350,21 @@ process_real_datasets_query_time() {
                 # Measure query time for legitimate datasets (only for base parameters)
                 if [ "$n_val" = "$base_n" ] && [ "$percentage" = "$base_POISONING_PERCENTAGE" ]; then
                     echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype (legitimate)"
-                    input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
+                    input_file_path="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                     base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
-                    run_measure_query_time "$input_file_name" "$input_file_name" "0" "$base_output_name" "$real_dataset_name" "$n_val"
+                    run_measure_query_time "$input_file_path" "$input_file_path" "0" "$base_output_name" "$real_dataset_name" "$n_val"
                 fi
                 
                 # Measure query time for poisoned datasets
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "greedy" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_percentage${percentage}_${dtype}"
-                run_measure_query_time "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
                 # Also measure query time for RANDOM poison variant (if present)
-                input_file_name_random="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_random_${dtype}"
+                input_file_path_random="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "random" "" "$dtype")"
                 base_output_name_random="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_random_percentage${percentage}_${dtype}"
-                run_measure_query_time_random "$input_file_name_random" "$pre_input_file" "$poison_num" "$base_output_name_random" "$real_dataset_name" "$n_val"
+                run_measure_query_time_random "$input_file_path_random" "$pre_input_file" "$poison_num" "$base_output_name_random" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -383,21 +383,21 @@ process_sync_datasets_query_time() {
                 # Measure query time for legitimate datasets (only for base parameters)
                 if [ "$n_val" = "$base_n" ] && [ "$R_val" = "$base_R" ] && [ "$percentage" = "$base_POISONING_PERCENTAGE" ]; then
                     echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype (legitimate)"
-                    input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
+                    input_file_path="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                     base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
-                    run_measure_query_time "$input_file_name" "$input_file_name" "0" "$base_output_name" "$sync_dataset_name" "$n_val"
+                    run_measure_query_time "$input_file_path" "$input_file_path" "0" "$base_output_name" "$sync_dataset_name" "$n_val"
                 fi
                 
                 # Measure query time for poisoned datasets
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "greedy" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_percentage${percentage}_${dtype}"
-                run_measure_query_time "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
                 # Also measure query time for RANDOM poison variant (if present)
-                input_file_name_random="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_random_${dtype}"
+                input_file_path_random="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "random" "$R_val" "$dtype")"
                 base_output_name_random="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_random_percentage${percentage}_${dtype}"
-                run_measure_query_time_random "$input_file_name_random" "$pre_input_file" "$poison_num" "$base_output_name_random" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_random "$input_file_path_random" "$pre_input_file" "$poison_num" "$base_output_name_random" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -414,10 +414,10 @@ process_real_datasets_consecutive_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive approach
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage (consecutive)"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_percentage${percentage}_${dtype}"
-                run_measure_query_time_consecutive "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time_consecutive "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -434,10 +434,10 @@ process_real_datasets_consecutive_w_endpoints_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints)"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_percentage${percentage}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -455,10 +455,10 @@ process_sync_datasets_consecutive_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive approach
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage (consecutive)"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_percentage${percentage}_${dtype}"
-                run_measure_query_time_consecutive "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_consecutive "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -476,10 +476,10 @@ process_sync_datasets_consecutive_w_endpoints_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints)"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_percentage${percentage}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -497,10 +497,10 @@ process_sync_datasets_consecutive_w_endpoints_duplicate_allowed_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach (duplicate allowed)
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints duplicate allowed)"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_duplicate_allowed" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_percentage${percentage}_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints_duplicate_allowed "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints_duplicate_allowed "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -518,10 +518,10 @@ process_sync_datasets_consecutive_w_endpoints_using_relaxed_solution_query_time(
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach (using relaxed solution)
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints using relaxed solution)"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_using_relaxed_solution_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_using_relaxed_solution" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_using_relaxed_solution_percentage${percentage}_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -539,10 +539,10 @@ process_real_datasets_consecutive_w_endpoints_duplicate_allowed_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach (duplicate allowed)
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints duplicate allowed)"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_duplicate_allowed" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_percentage${percentage}_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints_duplicate_allowed "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints_duplicate_allowed "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -559,10 +559,10 @@ process_real_datasets_consecutive_w_endpoints_using_relaxed_solution_query_time(
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using consecutive with endpoints approach (using relaxed solution)
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage (consecutive with endpoints using relaxed solution)"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_using_relaxed_solution_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_using_relaxed_solution" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_using_relaxed_solution_percentage${percentage}_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
-                run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time_consecutive_w_endpoints_using_relaxed_solution "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -579,10 +579,10 @@ process_real_datasets_duplicate_allowed_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using duplicate allowed approach
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage (duplicate allowed)"
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_duplicate_allowed_${dtype}"
-                pre_input_file="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "greedy_duplicate_allowed" "" "$dtype")"
+                pre_input_file="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_duplicate_allowed_percentage${percentage}_${dtype}"
-                run_measure_query_time_duplicate_allowed "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_measure_query_time_duplicate_allowed "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -600,10 +600,10 @@ process_sync_datasets_duplicate_allowed_query_time() {
             for dtype in "uint64"; do
                 # Measure query time for poisoned datasets using duplicate allowed approach
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage (duplicate allowed)"
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_duplicate_allowed_${dtype}"
-                pre_input_file="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "greedy_duplicate_allowed" "$R_val" "$dtype")"
+                pre_input_file="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_duplicate_allowed_percentage${percentage}_${dtype}"
-                run_measure_query_time_duplicate_allowed "$input_file_name" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_measure_query_time_duplicate_allowed "$input_file_path" "$pre_input_file" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done

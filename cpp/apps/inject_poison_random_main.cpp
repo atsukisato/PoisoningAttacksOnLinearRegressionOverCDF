@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
             common::write_to_binary(poisoned_data, output_file);
 
             // Build JSON
-            common::DatasetInfo info = common::parse_filename(filename);
+            common::DatasetInfo info = common::parse_filename(input_file);
             std::ostringstream json_entry;
             json_entry << "{\n"
                       << "  \"dataset_name\": \"" << info.dataset_name << "\",\n"
@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
             common::write_to_binary(poisoned_data, output_file);
 
             // Build JSON
-            common::DatasetInfo info = common::parse_filename(filename);
+            common::DatasetInfo info = common::parse_filename(input_file);
             std::ostringstream json_entry;
             json_entry << "{\n"
                       << "  \"dataset_name\": \"" << info.dataset_name << "\",\n"

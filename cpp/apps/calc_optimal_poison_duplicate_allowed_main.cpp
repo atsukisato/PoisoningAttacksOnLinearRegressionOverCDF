@@ -14,20 +14,21 @@
 #include <vector>
 
 std::string get_data_output_filename(const std::string& filename, const size_t lambda) {
-    std::string basename = filename;
-    size_t last_slash = basename.find_last_of("/\\");
-    if (last_slash != std::string::npos) {
-        basename = basename.substr(last_slash + 1);
+    std::filesystem::path input_path(filename);
+    std::string leaf = input_path.filename().string();
+    std::string dtype_suffix;
+    if (leaf.size() >= 7 && leaf.compare(leaf.size() - 7, 7, "_uint64") == 0) {
+        dtype_suffix = "_uint64";
+    } else if (leaf.size() >= 7 && leaf.compare(leaf.size() - 7, 7, "_uint32") == 0) {
+        dtype_suffix = "_uint32";
+    } else {
+        return "optimal_poison_duplicate_allowed_" + leaf;
     }
-    size_t pos = basename.find("_uint");
-    if (pos != std::string::npos) {
-        std::string prefix = basename.substr(0, pos);
-        std::string suffix = basename.substr(pos);
-        std::string new_basename = prefix + "_lambda" + std::to_string(lambda) + "_optimal_poison_duplicate_allowed" + suffix;
-        std::string dir_path = filename.substr(0, last_slash + 1);
-        return dir_path + new_basename;
-    }
-    return "optimal_poison_duplicate_allowed_" + basename;
+    std::filesystem::path output_path =
+        input_path.parent_path() / ("lambda" + std::to_string(lambda)) /
+        ("optimal_poison_duplicate_allowed" + dtype_suffix);
+    std::filesystem::create_directories(output_path.parent_path());
+    return output_path.string();
 }
 
 int main(int argc, char* argv[]) {
@@ -119,9 +120,8 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        // Extract detailed information from filename
-        std::string basename = std::filesystem::path(filename).filename().string();
-        common::DatasetInfo info = common::parse_filename(basename);
+        // Extract detailed information from path (nested layout under data/generated)
+        common::DatasetInfo info = common::parse_filename(filename);
 
         // Build data in JSON format
         std::ostringstream json_entry;

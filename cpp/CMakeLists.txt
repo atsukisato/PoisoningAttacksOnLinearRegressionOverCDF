@@ -24,6 +24,8 @@ if(NOT CORE_SOURCES)
     message(WARNING "No core sources found")
 endif()
 add_library(poisoning_core STATIC ${CORE_SOURCES})
+# consecutive_w_* sources in the core library need Boost headers
+target_link_libraries(poisoning_core PUBLIC Boost::boost)
 
 # Executables
 add_executable(calc_loss apps/calc_loss_main.cpp)
@@ -69,6 +71,9 @@ add_executable(calc_optimal_poison apps/calc_optimal_poison_main.cpp)
 # Brute-force optimal poison executable with duplicate allowed (step 5.2)
 add_executable(calc_optimal_poison_duplicate_allowed apps/calc_optimal_poison_duplicate_allowed_main.cpp)
 
+# CI smoke test (handmade tiny datasets + golden asserts)
+add_executable(smoke_test apps/smoke_test.cpp)
+
 # Link core library to all executables (common)
 set(POISONING_TARGETS
     calc_loss measure_query_time gen_sync gen_real
@@ -78,12 +83,8 @@ set(POISONING_TARGETS
     inject_poison_consecutive_w_endpoints_using_relaxed_solution
     calc_upper_bound_binary calc_upper_bound_golden calc_upper_bound_strict
     calc_optimal_poison calc_optimal_poison_duplicate_allowed
+    smoke_test
 )
 foreach(target ${POISONING_TARGETS})
     target_link_libraries(${target} PRIVATE poisoning_core)
 endforeach()
-
-# ---- Boost is needed ONLY for consecutive_w_* ----
-target_link_libraries(inject_poison_consecutive_w_endpoints PRIVATE Boost::boost)
-target_link_libraries(inject_poison_consecutive_w_endpoints_duplicate_allowed PRIVATE Boost::boost)
-target_link_libraries(inject_poison_consecutive_w_endpoints_using_relaxed_solution PRIVATE Boost::boost)

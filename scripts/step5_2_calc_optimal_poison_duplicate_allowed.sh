@@ -79,13 +79,13 @@ mkdir -p "$RESULTS_DIR/optimal_poison_duplicate_allowed"
 cd "$BUILD_DIR"
 
 run_calc_optimal_poison() {
-    input_file_name="$1"
+    input_file_path="$1"
     poison_num="$2"
     base_output_name="$3"
     dataset_name="$4"
     n="$5"
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
     
@@ -93,13 +93,13 @@ run_calc_optimal_poison() {
     json_file="$RESULTS_DIR/optimal_poison_duplicate_allowed/${dataset_name}/n${n}/lambda${poison_num}/${base_output_name}_brute_force_duplicate_allowed.json"
     mkdir -p "$RESULTS_DIR/optimal_poison_duplicate_allowed/${dataset_name}/n${n}/lambda${poison_num}"
     
-    echo "    Calculating optimal poison values for: $input_file_name (lambda=$poison_num)"
+    echo "    Calculating optimal poison values for: $input_file_path (lambda=$poison_num)"
     
     # Brute Force Algorithm (C++ executable) - Duplicate Allowed
     if [ -f "$json_file" ]; then
         echo "        [Skipped] Brute force duplicate allowed JSON file already exists: ${base_output_name}_brute_force_duplicate_allowed.json"
     else
-        ./calc_optimal_poison_duplicate_allowed "$DATA_DIR/${input_file_name}" $poison_num "$json_file" 2>/dev/null || echo "      Error running brute force duplicate allowed for $input_file_name with lambda=$poison_num"
+        ./calc_optimal_poison_duplicate_allowed "$input_file_path" $poison_num "$json_file" 2>/dev/null || echo "      Error running brute force duplicate allowed for $input_file_path with lambda=$poison_num"
     fi
 }
 
@@ -112,12 +112,12 @@ process_real_datasets() {
     for real_dataset_name in "${real_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
-                if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
+                input_file_path="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
+                if [ ! -f "$input_file_path" ]; then
                     continue
                 fi
                 base_output_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_percentage${percentage}_${dtype}"
-                run_calc_optimal_poison "$input_file_name" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                run_calc_optimal_poison "$input_file_path" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -133,12 +133,12 @@ process_sync_datasets() {
     for sync_dataset_name in "${sync_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
-                if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
+                input_file_path="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
+                if [ ! -f "$input_file_path" ]; then
                     continue
                 fi
                 base_output_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_percentage${percentage}_${dtype}"
-                run_calc_optimal_poison "$input_file_name" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                run_calc_optimal_poison "$input_file_path" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done

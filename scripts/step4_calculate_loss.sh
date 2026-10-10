@@ -89,20 +89,20 @@ cd "$BUILD_DIR"
 run_calc_loss_variant() {
     local variant_dir="$1"
     local log_suffix="$2"
-    local input_file_name="$3"
-    local legitimate_file_name="$4"
+    local input_file_path="$3"
+    local legitimate_file_path="$4"
     local poison_num="$5"
     local base_output_name="$6"
     local dataset_name="$7"
     local n_value="$8"
 
-    if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-        echo "    Input file not found: $DATA_DIR/${input_file_name}"
+    if [ ! -f "$input_file_path" ]; then
+        echo "    Input file not found: $input_file_path"
         return
     fi
 
-    if [ ! -f "$DATA_DIR/${legitimate_file_name}" ]; then
-        echo "    Legitimate file not found: $DATA_DIR/${legitimate_file_name}"
+    if [ ! -f "$legitimate_file_path" ]; then
+        echo "    Legitimate file not found: $legitimate_file_path"
         return
     fi
 
@@ -115,11 +115,11 @@ run_calc_loss_variant() {
         return
     fi
 
-    echo "    Calculating loss for: $input_file_name (lambda=$poison_num${log_suffix})"
-    if ./calc_loss "$DATA_DIR/${input_file_name}" "$DATA_DIR/${legitimate_file_name}" "$loss_json_file" 2>/dev/null; then
+    echo "    Calculating loss for: $input_file_path (lambda=$poison_num${log_suffix})"
+    if ./calc_loss "$input_file_path" "$legitimate_file_path" "$loss_json_file" 2>/dev/null; then
         echo "      Loss calculation completed"
     else
-        echo "      [ERROR] Error calculating loss for $input_file_name"
+        echo "      [ERROR] Error calculating loss for $input_file_path"
         exit 1
     fi
 }
@@ -163,29 +163,37 @@ process_real_datasets_generic() {
     local include_legit="$6"
 
     local poison_num=$((n_val * percentage / 100))
+    local method
+    if [ -z "$input_suffix" ]; then
+        method="greedy"
+    else
+        method="${input_suffix#_}"
+    fi
 
     for real_dataset_name in "${real_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
+                local legitimate_file_path
+                legitimate_file_path="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
+
                 # Legitimate dataset (only for baseline parameters)
                 if [ "$include_legit" = "true" ] && \
                    [ "$n_val" = "$base_n" ] && \
                    [ "$percentage" = "$base_POISONING_PERCENTAGE" ]; then
-                    local input_legit="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
                     local base_out_legit="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
                     echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype (legitimate)"
                     # For legitimate case, input and legitimate file are the same
-                    run_calc_loss "$input_legit" "$input_legit" "0" "$base_out_legit" "$real_dataset_name" "$n_val"
+                    run_calc_loss "$legitimate_file_path" "$legitimate_file_path" "0" "$base_out_legit" "$real_dataset_name" "$n_val"
                 fi
 
                 # Poisoned dataset
                 echo "Processing: $real_dataset_name n=$n_val seed=$seed dtype=$dtype percentage=$percentage${output_suffix:+ ($output_suffix)}"
                 local base_prefix="${real_dataset_name}_n${n_val}_seed${seed}"
-                local input_file_name="${base_prefix}_lambda${poison_num}${input_suffix}_${dtype}"
+                local input_file_path
+                input_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "$method" "" "$dtype")"
                 local base_output_name="${base_prefix}_lambda${poison_num}${output_suffix}_percentage${percentage}_${dtype}"
-                local legitimate_file_name="${base_prefix}_${dtype}"
 
-                "$loss_func" "$input_file_name" "$legitimate_file_name" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
+                "$loss_func" "$input_file_path" "$legitimate_file_path" "$poison_num" "$base_output_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -202,30 +210,38 @@ process_sync_datasets_generic() {
     local include_legit="$7"
 
     local poison_num=$((n_val * percentage / 100))
+    local method
+    if [ -z "$input_suffix" ]; then
+        method="greedy"
+    else
+        method="${input_suffix#_}"
+    fi
 
     for sync_dataset_name in "${sync_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
+                local legitimate_file_path
+                legitimate_file_path="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
+
                 # Legitimate dataset (only for baseline parameters)
                 if [ "$include_legit" = "true" ] && \
                    [ "$n_val" = "$base_n" ] && \
                    [ "$R_val" = "$base_R" ] && \
                    [ "$percentage" = "$base_POISONING_PERCENTAGE" ]; then
-                    local input_legit="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
                     local base_out_legit="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
                     echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype (legitimate)"
                     # For legitimate case, input and legitimate file are the same
-                    run_calc_loss "$input_legit" "$input_legit" "0" "$base_out_legit" "$sync_dataset_name" "$n_val"
+                    run_calc_loss "$legitimate_file_path" "$legitimate_file_path" "0" "$base_out_legit" "$sync_dataset_name" "$n_val"
                 fi
 
                 # Poisoned dataset
                 echo "Processing: $sync_dataset_name n=$n_val R=$R_val seed=$seed dtype=$dtype percentage=$percentage${output_suffix:+ ($output_suffix)}"
                 local base_prefix="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}"
-                local input_file_name="${base_prefix}_lambda${poison_num}${input_suffix}_${dtype}"
+                local input_file_path
+                input_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "$method" "$R_val" "$dtype")"
                 local base_output_name="${base_prefix}_lambda${poison_num}${output_suffix}_percentage${percentage}_${dtype}"
-                local legitimate_file_name="${base_prefix}_${dtype}"
 
-                "$loss_func" "$input_file_name" "$legitimate_file_name" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
+                "$loss_func" "$input_file_path" "$legitimate_file_path" "$poison_num" "$base_output_name" "$sync_dataset_name" "$n_val"
             done
         done
     done
@@ -284,7 +300,7 @@ process_real_datasets_duplicate_allowed_loss() {
         "run_calc_loss_duplicate_allowed" \
         "$n_val" \
         "$percentage" \
-        "_duplicate_allowed" \
+        "_greedy_duplicate_allowed" \
         "_duplicate_allowed" \
         "false"
 }
@@ -388,7 +404,7 @@ process_sync_datasets_duplicate_allowed_loss() {
         "$n_val" \
         "$R_val" \
         "$percentage" \
-        "_duplicate_allowed" \
+        "_greedy_duplicate_allowed" \
         "_duplicate_allowed" \
         "false"
 }

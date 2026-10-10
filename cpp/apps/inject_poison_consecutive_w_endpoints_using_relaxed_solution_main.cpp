@@ -36,8 +36,7 @@ int main(int argc, char* argv[]) {
         
         {
             // Extract detailed information from filename
-            std::string filename = std::filesystem::path(input_file).filename().string();
-            common::DatasetInfo info = common::parse_filename(filename);
+            common::DatasetInfo info = common::parse_filename(input_file);
             
             // Build data in JSON format
             std::ostringstream json_entry;

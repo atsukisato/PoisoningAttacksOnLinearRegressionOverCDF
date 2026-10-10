@@ -80,15 +80,15 @@ cd "$BUILD_DIR"
 
 # Function to inject poison into a dataset using consecutive approach with endpoints
 run_inject_poison_consecutive_w_endpoints_duplicate_allowed() {
-    input_file_name="$1"
-    output_file_name="$2"
+    input_file_path="$1"
+    output_file_path="$2"
     poison_num="$3"
     json_file_name="$4"
     dataset_name="$5"
     n="$6"
-    output_file_path="$DATA_DIR/${output_file_name}"
     json_file_path="$RESULTS_DIR/inject_poison_consecutive_w_endpoints_duplicate_allowed/${dataset_name}/n${n}/lambda${poison_num}/${json_file_name}"
     mkdir -p "$RESULTS_DIR/inject_poison_consecutive_w_endpoints_duplicate_allowed/${dataset_name}/n${n}/lambda${poison_num}"
+    mkdir -p "$(dirname "$output_file_path")"
     output_file_exists=false
     json_file_exists=false
     if [ -f "$output_file_path" ]; then
@@ -103,7 +103,7 @@ run_inject_poison_consecutive_w_endpoints_duplicate_allowed() {
     fi
     rm -f "$output_file_path"
     rm -f "$json_file_path"
-    ./inject_poison_consecutive_w_endpoints_duplicate_allowed "$DATA_DIR/${input_file_name}" "$output_file_path" $poison_num "$json_file_path" 2>/dev/null || echo "      Error processing $dataset_name with lambda=$poison_num"
+    ./inject_poison_consecutive_w_endpoints_duplicate_allowed "$input_file_path" "$output_file_path" $poison_num "$json_file_path" 2>/dev/null || echo "      Error processing $dataset_name with lambda=$poison_num"
 }
 
 # Function to process real datasets with given parameters
@@ -115,14 +115,14 @@ process_real_datasets() {
     for real_dataset_name in "${real_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
-                input_file_name="${real_dataset_name}_n${n_val}_seed${seed}_${dtype}"
-                if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-                    echo "    Input file not found: $DATA_DIR/${input_file_name}"
+                input_file_path="$(generated_legit_path "$real_dataset_name" "$n_val" "$seed" "" "$dtype")"
+                if [ ! -f "$input_file_path" ]; then
+                    echo "    Input file not found: $input_file_path"
                     continue
                 fi
-                output_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}"
+                output_file_path="$(generated_poison_path "$real_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_duplicate_allowed" "" "$dtype")"
                 json_file_name="${real_dataset_name}_n${n_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}.json"
-                run_inject_poison_consecutive_w_endpoints_duplicate_allowed "$input_file_name" "$output_file_name" "$poison_num" "$json_file_name" "$real_dataset_name" "$n_val"
+                run_inject_poison_consecutive_w_endpoints_duplicate_allowed "$input_file_path" "$output_file_path" "$poison_num" "$json_file_name" "$real_dataset_name" "$n_val"
             done
         done
     done
@@ -138,14 +138,14 @@ process_sync_datasets() {
     for sync_dataset_name in "${sync_dataset_names[@]}"; do
         for seed in "${seeds[@]}"; do
             for dtype in "uint64"; do
-                input_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_${dtype}"
-                if [ ! -f "$DATA_DIR/${input_file_name}" ]; then
-                    echo "    Input file not found: $DATA_DIR/${input_file_name}"
+                input_file_path="$(generated_legit_path "$sync_dataset_name" "$n_val" "$seed" "$R_val" "$dtype")"
+                if [ ! -f "$input_file_path" ]; then
+                    echo "    Input file not found: $input_file_path"
                     continue
                 fi
-                output_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}"
+                output_file_path="$(generated_poison_path "$sync_dataset_name" "$n_val" "$seed" "$poison_num" "consecutive_w_endpoints_duplicate_allowed" "$R_val" "$dtype")"
                 json_file_name="${sync_dataset_name}_n${n_val}_R${R_val}_seed${seed}_lambda${poison_num}_consecutive_w_endpoints_duplicate_allowed_${dtype}.json"
-                run_inject_poison_consecutive_w_endpoints_duplicate_allowed "$input_file_name" "$output_file_name" "$poison_num" "$json_file_name" "$sync_dataset_name" "$n_val"
+                run_inject_poison_consecutive_w_endpoints_duplicate_allowed "$input_file_path" "$output_file_path" "$poison_num" "$json_file_name" "$sync_dataset_name" "$n_val"
             done
         done
     done

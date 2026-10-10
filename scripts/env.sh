@@ -16,6 +16,41 @@ PAPER_DIR="$PROJECT_ROOT/paper"
 
 export SCRIPT_DIR PROJECT_ROOT BUILD_DIR RAW_DATA_DIR DATA_DIR RESULTS_DIR PLOT_DIR PAPER_DIR
 
+# Nested layout under data/generated:
+#   Real legit:  $DATA_DIR/$dataset/n$n/seed$seed/legitimate_uint64
+#   Sync legit:  $DATA_DIR/$dataset/n$n/R$R/seed$seed/legitimate_uint64
+#   Real poison: $DATA_DIR/$dataset/n$n/seed$seed/lambda$lambda/${method}_uint64
+#   Sync poison: $DATA_DIR/$dataset/n$n/R$R/seed$seed/lambda$lambda/${method}_uint64
+#
+# Optional trailing R: omit (or pass empty) for real datasets.
+generated_legit_path() {
+    local dataset="$1"
+    local n="$2"
+    local seed="$3"
+    local R="${4:-}"
+    local dtype="${5:-uint64}"
+    if [ -n "$R" ]; then
+        echo "$DATA_DIR/${dataset}/n${n}/R${R}/seed${seed}/legitimate_${dtype}"
+    else
+        echo "$DATA_DIR/${dataset}/n${n}/seed${seed}/legitimate_${dtype}"
+    fi
+}
+
+generated_poison_path() {
+    local dataset="$1"
+    local n="$2"
+    local seed="$3"
+    local lambda="$4"
+    local method="$5"
+    local R="${6:-}"
+    local dtype="${7:-uint64}"
+    if [ -n "$R" ]; then
+        echo "$DATA_DIR/${dataset}/n${n}/R${R}/seed${seed}/lambda${lambda}/${method}_${dtype}"
+    else
+        echo "$DATA_DIR/${dataset}/n${n}/seed${seed}/lambda${lambda}/${method}_${dtype}"
+    fi
+}
+
 # Poisoning percentages
 base_POISONING_PERCENTAGE=10
 all_POISONING_PERCENTAGES=(2 4 6 8 10 12 14 16 18 20)

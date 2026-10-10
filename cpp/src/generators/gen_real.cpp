@@ -1,5 +1,6 @@
 #include "poisoning/gen_real.h"
 #include "common/binary_io.h"
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 
@@ -84,14 +85,13 @@ void sample_and_save_real_datasets(const RealSamplingConfig& config, const std::
             for (size_t n : config.ns) {
                 for (std::uint64_t seed : config.seeds) {
                     try {
-                        std::string output_file = output_dir + dataset_info.name + "_n" + std::to_string(n) + 
-                                                "_seed" + std::to_string(seed) + "_" + dataset_info.dtype_str;
-                        std::ifstream test_output(output_file);
-                        if (test_output.good()) {
-                            test_output.close();
+                        std::string output_file = output_dir + dataset_info.name + "/n" + std::to_string(n) +
+                                                "/seed" + std::to_string(seed) + "/legitimate_" + dataset_info.dtype_str;
+                        if (std::filesystem::exists(output_file)) {
                             std::cerr << "[Skipped] Output file already exists: " << output_file << std::endl;
                             continue;
                         }
+                        std::filesystem::create_directories(std::filesystem::path(output_file).parent_path());
                         std::cerr << "Outputting to " << output_file << std::endl;
 
                         // Sample from loaded data
@@ -100,8 +100,8 @@ void sample_and_save_real_datasets(const RealSamplingConfig& config, const std::
                         common::write_to_binary(sampled_data, output_file);
                         
                     } catch (const std::exception& e) {
-                        std::cerr << "Error processing " << dataset_info.name << "_n" << n 
-                                 << "_seed" << seed << "_" << dataset_info.dtype_str << ": " << e.what() << std::endl;
+                        std::cerr << "Error processing " << dataset_info.name << "/n" << n
+                                 << "/seed" << seed << "/legitimate_" << dataset_info.dtype_str << ": " << e.what() << std::endl;
                         continue;
                     }
                 }
@@ -113,14 +113,13 @@ void sample_and_save_real_datasets(const RealSamplingConfig& config, const std::
             for (size_t n : config.ns) {
                 for (std::uint64_t seed : config.seeds) {
                     try {
-                        std::string output_file = output_dir + dataset_info.name + "_n" + std::to_string(n) + 
-                                                "_seed" + std::to_string(seed) + "_" + dataset_info.dtype_str;
-                        std::ifstream test_output(output_file);
-                        if (test_output.good()) {
-                            test_output.close();
+                        std::string output_file = output_dir + dataset_info.name + "/n" + std::to_string(n) +
+                                                "/seed" + std::to_string(seed) + "/legitimate_" + dataset_info.dtype_str;
+                        if (std::filesystem::exists(output_file)) {
                             std::cerr << "[Skipped] Output file already exists: " << output_file << std::endl;
                             continue;
                         }
+                        std::filesystem::create_directories(std::filesystem::path(output_file).parent_path());
                         std::cerr << "Outputting to " << output_file << std::endl;
 
                         // Sample from loaded data
@@ -129,8 +128,8 @@ void sample_and_save_real_datasets(const RealSamplingConfig& config, const std::
                         common::write_to_binary(sampled_data, output_file);
                         
                     } catch (const std::exception& e) {
-                        std::cerr << "Error processing " << dataset_info.name << "_n" << n 
-                                 << "_seed" << seed << "_" << dataset_info.dtype_str << ": " << e.what() << std::endl;
+                        std::cerr << "Error processing " << dataset_info.name << "/n" << n
+                                 << "/seed" << seed << "/legitimate_" << dataset_info.dtype_str << ": " << e.what() << std::endl;
                         continue;
                     }
                 }

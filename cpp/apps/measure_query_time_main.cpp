@@ -122,8 +122,7 @@ int main(int argc, char* argv[]) {
             : static_cast<double>(total_model_us) / denom;
 
         // Extract detailed information from filename
-        std::string basename = std::filesystem::path(filename).filename().string();
-        common::DatasetInfo info = common::parse_filename(basename);
+        common::DatasetInfo info = common::parse_filename(filename);
         
         // Build data in JSON format
         std::ostringstream json_entry;

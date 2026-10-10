@@ -1,0 +1,110 @@
+name: Experiment pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Pipeline mode (all is omitted: likely exceeds 6h runner limit)"
+        required: true
+        default: quick
+        type: choice
+        options:
+          - quick
+          - all-one-seed
+
+permissions:
+  contents: read
+
+jobs:
+  experiment-pipeline:
+    name: ${{ inputs.mode }} pipeline
+    runs-on: ubuntu-22.04
+    timeout-minutes: ${{ inputs.mode == 'all-one-seed' && 360 || 120 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/powershell /usr/local/lib/node_modules
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          df -h
+
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          TZ: Etc/UTC
+          PIP_NO_CACHE_DIR: "1"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            python3 \
+            python3-pip \
+            wget \
+            zstd \
+            nlohmann-json3-dev \
+            libboost-all-dev \
+            texlive-latex-base \
+            texlive-latex-recommended \
+            texlive-latex-extra \
+            texlive-fonts-recommended \
+            texlive-fonts-extra \
+            texlive-plain-generic \
+            texlive-science \
+            texlive-publishers \
+            latexmk
+          pip3 install --no-cache-dir -r requirements.txt
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          df -h
+
+      - name: Cache SOSD raw datasets
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: sosd-200m-v1-${{ runner.os }}
+          restore-keys: |
+            sosd-200m-v1-${{ runner.os }}
+
+      - name: Check disk usage
+        run: |
+          df -h
+          du -sh data/raw 2>/dev/null || true
+
+      - name: Run ${{ inputs.mode }} pipeline
+        run: |
+          mkdir -p results
+          ./scripts/run_all.sh --${{ inputs.mode }} > results/run_all.log 2>&1 &
+          PID=$!
+          while kill -0 "$PID" 2>/dev/null; do
+            echo "[$(date -u +%H:%M:%S)] running... $(tail -n 1 results/run_all.log 2>/dev/null || true)"
+            sleep 60
+          done
+          wait "$PID"
+          EXIT=$?
+          if [ "$EXIT" -ne 0 ]; then
+            echo "=== last 100 lines of results/run_all.log ==="
+            tail -n 100 results/run_all.log
+            exit "$EXIT"
+          fi
+          echo "Pipeline completed successfully"
+          echo "=== last 30 lines of results/run_all.log ==="
+          tail -n 30 results/run_all.log
+
+      - name: Upload artifacts
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.mode }}-pipeline-results
+          if-no-files-found: warn
+          path: |
+            paper/main.pdf
+            results/run_all.log
+            results/system_info.log
+            results/performance_setup.log
+            results/figures/**/*.pdf

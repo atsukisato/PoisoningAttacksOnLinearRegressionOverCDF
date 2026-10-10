@@ -123,12 +123,14 @@ void generate_and_save_datasets(const GenerationConfig& config, const std::strin
                         generator.set_seed(seed);
                         
                         if (dtype_str == "uint32") {
-                            std::string filename = output_dir + dist + "_n" + std::to_string(n) + 
-                                                 "_R" + std::to_string(R) + "_seed" + std::to_string(seed) + "_uint32";
+                            std::string filename = output_dir + dist + "/n" + std::to_string(n) +
+                                                 "/R" + std::to_string(R) + "/seed" + std::to_string(seed) +
+                                                 "/legitimate_uint32";
                             if (std::filesystem::exists(filename)) {
                                 std::cerr << "[Skipped] Output file already exists: " << filename << std::endl;
                                 continue;
                             }
+                            std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
                             std::cerr << "Outputting to " << filename << std::endl;
 
                             std::vector<std::uint32_t> data;
@@ -143,12 +145,14 @@ void generate_and_save_datasets(const GenerationConfig& config, const std::strin
                             
                             common::write_to_binary(data, filename);
                         } else { // uint64
-                            std::string filename = output_dir + dist + "_n" + std::to_string(n) + 
-                                                 "_R" + std::to_string(R) + "_seed" + std::to_string(seed) + "_uint64";
+                            std::string filename = output_dir + dist + "/n" + std::to_string(n) +
+                                                 "/R" + std::to_string(R) + "/seed" + std::to_string(seed) +
+                                                 "/legitimate_uint64";
                             if (std::filesystem::exists(filename)) {
                                 std::cerr << "[Skipped] Output file already exists: " << filename << std::endl;
                                 continue;
                             }
+                            std::filesystem::create_directories(std::filesystem::path(filename).parent_path());
                             std::cerr << "Outputting to " << filename << std::endl;
 
                             std::vector<std::uint64_t> data;
