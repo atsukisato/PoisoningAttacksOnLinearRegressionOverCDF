@@ -1,7 +1,7 @@
 # Mathematical Foundations of Poisoning Attacks on Linear Regression over Cumulative Distribution Functions <!-- omit from toc -->
 
 This repository contains the artifact for the paper [*Mathematical Foundations of Poisoning Attacks on Linear Regression over Cumulative Distribution Functions*](https://dl.acm.org/doi/10.1145/3802085) (SIGMOD 2026).
-It provides C++ implementations of the proposed poisoning / upper-bound algorithms, experiment scripts, and plotting code used to generate the experimental figures and a table in the paper.
+It provides C++ implementations of the proposed poisoning / upper-bound algorithms, experiment scripts, and plotting code used to generate the experimental figures and a table in the paper, as well as scripts to recompile the paper PDF.
 
 ## Table of Contents <!-- omit from toc -->
 
@@ -17,6 +17,11 @@ It provides C++ implementations of the proposed poisoning / upper-bound algorith
   - [Running](#running)
   - [Outputs and Completion Checks](#outputs-and-completion-checks)
   - [Clean-up and Reruns](#clean-up-and-reruns)
+- [Compare Against Reference](#compare-against-reference)
+  - [1. Download reference archives](#1-download-reference-archives)
+  - [2. Run comparison](#2-run-comparison)
+  - [3. Read the reports](#3-read-the-reports)
+  - [What is compared](#what-is-compared)
 - [Graphs and Plots](#graphs-and-plots)
   - [Generate the Paper Figures and Table](#generate-the-paper-figures-and-table)
   - [Mapping to Paper Figures and Table](#mapping-to-paper-figures-and-table)
@@ -99,7 +104,7 @@ Then run the full reproduction pipeline:
 This command automatically downloads the datasets (if missing), compiles the C++ tools, generates the experimental datasets, runs the experiments, generates the figures and a table, and compiles the paper PDF.
 
 > [!IMPORTANT]
-> A full run (`--all`) can take a long time—typically **several days**, depending on your hardware.
+> A full run (`--all`) can take a long time, typically **several days**, depending on your hardware.
 > We recommend first checking the pipeline with `--quick`, then `--all-one-seed`, before a full `--all` run.
 > 
 > Approximate wall-clock times are listed below. Docker image build time is excluded, and dataset download time is listed separately.
@@ -197,6 +202,7 @@ which runs the full pipeline:
 5. Upper bounds / small-scale optima (`step5*.sh`)
 6. Plot / table generation (`step6_generate_plots.sh`)
 7. Paper PDF compilation (`step7_compile_paper.sh`)
+8. (Optional) Reference comparison (`step8_compare_reference.sh`; only with `--compare-reference`; see [Compare Against Reference](#compare-against-reference))
 
 ### Outputs and Completion Checks
 
@@ -211,6 +217,7 @@ Primary outputs:
 | `results/tables/overview.tex` | Generated Table 1 |
 | `paper/main.pdf` | Compiled paper (after Step 7) |
 | `data/generated/{dataset}/n{n}/[R{R}/]seed{seed}/[lambda{λ}/]{method}_uint64` | Generated legitimate / poisoned key arrays |
+| `comparison/` | Reference comparison reports (after `--compare-reference` or Step 8; see [Compare Against Reference](#compare-against-reference)) |
 
 Successful completion ends with a message like:
 
@@ -255,6 +262,79 @@ Raw datasets in `data/raw/` are retained for reuse.
 Do not delete them unless you intend to download them again.
 
 To rerun only plots / table / paper compilation after results exist, enter the container and run Steps 6–7 (see [Generate the Paper Figures and Table](#generate-the-paper-figures-and-table)).
+
+## Compare Against Reference
+
+Compare a local run against archived reference data and results published on Zenodo ([doi:10.5281/zenodo.23286272](https://doi.org/10.5281/zenodo.23286272)).
+
+### 1. Download reference archives
+
+From the Zenodo record, download these two ZIP files:
+
+- `reference-data-generated.zip`
+- `reference-results.zip`
+
+Place them under `reference/archives/` at the repository root:
+
+```text
+reference/archives/SHA256SUMS.txt                 # already in the repository
+reference/archives/reference-data-generated.zip   # from Zenodo
+reference/archives/reference-results.zip          # from Zenodo
+```
+
+### 2. Run comparison
+
+**Option A: run the pipeline with comparison enabled** (verifies and extracts archives, runs Steps 0–7, then compares):
+
+```bash
+./docker_run_all.sh --quick --compare-reference
+# or: --all-one-seed / --all together with --compare-reference
+```
+
+Missing archives cause an error; comparison is never auto-skipped based on presence alone.
+
+**Option B: experiments already finished** (prepare and compare only).
+From the repository root on the host, open an interactive container:
+
+```bash
+./docker_run.sh
+```
+
+Then inside the container (`WORKDIR` is `/workspace`):
+
+```bash
+./scripts/prepare_reference.sh
+./scripts/step8_compare_reference.sh
+```
+
+### 3. Read the reports
+
+Reports are written to `comparison/`:
+
+- `summary.txt`
+- `mismatch_file_paths.txt`
+- `source_only_file_paths.txt`
+- `reference_only_file_paths.txt`
+
+Exact agreement is not always expected (e.g., floating-point differences across environments).
+
+### What is compared
+
+Comparison is file-by-file over relative paths in two trees:
+
+| Local | Reference | Match criterion |
+|---|---|---|
+| `data/generated/` | `reference/data/generated/` | Exact bytes (same size and SHA-256) |
+| `results/` | `reference/results/` | Selected JSON fields (see below) |
+
+For `results/`, only these families are compared (`query_time*`, `tables`, and other paths are skipped):
+
+- `inject_poison*`: JSON field `mse`
+- `loss*`: entire JSON object
+- `optimal_poison*`: JSON field `loss`
+- `upper_bound*`: JSON field `mse_upper_bound`
+
+Numeric values use `math.isclose` with `rtol=1e-6` and `atol=1e-12`. Integers must match exactly; booleans, strings, and object key sets must match with matching types.
 
 ## Graphs and Plots
 

@@ -10,6 +10,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/env.sh"
 ALL_MODE=false
 ALL_ONE_SEED_MODE=false
 QUICK_MODE=false
+COMPARE_REFERENCE=false
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -26,9 +27,13 @@ while [[ $# -gt 0 ]]; do
             QUICK_MODE=true
             shift
             ;;
+        --compare-reference)
+            COMPARE_REFERENCE=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--all|--all-one-seed|--quick]"
+            echo "Usage: $0 [--all|--all-one-seed|--quick] [--compare-reference]"
             exit 1
             ;;
     esac
@@ -59,6 +64,7 @@ else
     echo "Mode: QUICK (limited datasets)"
 fi
 echo "Quick mode: $([ "$QUICK_MODE" = true ] && echo "Yes" || echo "No")"
+echo "Compare reference: $([ "$COMPARE_REFERENCE" = true ] && echo "Yes" || echo "No")"
 echo "Project root: $PROJECT_ROOT"
 echo "Data directory: $DATA_DIR"
 echo "Results will be saved to: $RESULTS_DIR"
@@ -70,6 +76,15 @@ mkdir -p "$RESULTS_DIR/inject_poison"
 mkdir -p "$RESULTS_DIR/upper_bound"
 mkdir -p "$RESULTS_DIR/loss"
 mkdir -p "$RESULTS_DIR/figures"
+
+# Optional: verify and extract reference archives before the long experiment
+if [ "$COMPARE_REFERENCE" = true ]; then
+    echo "Preparing reference (verify and extract archives)..."
+    if ! "$SCRIPT_DIR/prepare_reference.sh"; then
+        echo "Reference preparation failed"
+        exit 1
+    fi
+fi
 
 # Step 0: Download SOSD raw datasets (skips if the three required files already exist)
 echo "Step 0: Downloading datasets (if needed)..."
@@ -214,6 +229,15 @@ if ! "$SCRIPT_DIR/step7_compile_paper.sh"; then
     exit 1
 fi
 
+# Step 8: Compare against reference (optional)
+if [ "$COMPARE_REFERENCE" = true ]; then
+    echo "Step 8: Comparing against reference..."
+    if ! "$SCRIPT_DIR/step8_compare_reference.sh"; then
+        echo "Step 8 failed"
+        exit 1
+    fi
+fi
+
 # Final summary
 echo "Comprehensive experiment completed!"
 echo "======================================="
@@ -224,6 +248,9 @@ echo "  Data: $DATA_DIR"
 echo "  Results: $RESULTS_DIR/"
 echo "  Plots: $RESULTS_DIR/figures/"
 echo "  Paper PDF: $PAPER_DIR/main.pdf"
+if [ "$COMPARE_REFERENCE" = true ]; then
+    echo "  Comparison: $PROJECT_ROOT/comparison/"
+fi
 echo ""
 
 if [ -f "$RESULTS_DIR/inject_poison/real_injection_results.csv" ]; then
