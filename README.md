@@ -319,9 +319,9 @@ Reports are written to `comparison/`:
 - `source_only_file_paths.txt`
 - `reference_only_file_paths.txt`
 
-Exact agreement is not always expected (e.g., floating-point differences across environments).
-
 ### What is compared
+
+The comparison focuses on generated datasets and loss-related results rather than execution times, because query time and poison generation time can vary substantially across environments.
 
 Comparison is file-by-file over relative paths in two trees:
 
@@ -330,7 +330,7 @@ Comparison is file-by-file over relative paths in two trees:
 | `data/generated/` | `reference/data/generated/` | Exact bytes (same size and SHA-256) |
 | `results/` | `reference/results/` | Selected JSON fields (see below) |
 
-For `results/`, only these families are compared (`query_time*`, `tables`, and other paths are skipped):
+For `results/`, only these families are compared (`query_time*` and other paths are skipped):
 
 - `inject_poison*`: JSON field `mse`
 - `loss*`: entire JSON object
@@ -338,6 +338,9 @@ For `results/`, only these families are compared (`query_time*`, `tables`, and o
 - `upper_bound*`: JSON field `mse_upper_bound`
 
 Numeric values use `math.isclose` with `rtol=1e-6` and `atol=1e-12`. Integers must match exactly; booleans, strings, and object key sets must match with matching types.
+
+> [!NOTE]
+> Exact agreement is not always expected. Floating-point differences can slightly change computed losses and alter poison selection when candidates have nearly equal losses. In greedy poisoning, these differences can propagate through successive steps, producing substantially different final poisoned datasets. A data mismatch alone therefore does not imply a reproduction failure; assess it alongside the corresponding loss values and overall experimental trends.
 
 ## Graphs and Plots
 
